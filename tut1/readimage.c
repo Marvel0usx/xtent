@@ -20,22 +20,22 @@ static void print_blockgroup(const struct ext2_group_desc *group, int verbose)
 	if (verbose)
 	{
 		printf("Block group:\n");
-		printf("    block bitmap: %d\n", /* TODO */);
-		printf("    inode bitmap: %d\n", /* TODO */);
-		printf("    inode table: %d\n", /* TODO */);
-		printf("    free blocks: %d\n", /* TODO */);
-		printf("    free inodes: %d\n", /* TODO */);
-		printf("    used_dirs: %d\n", /* TODO */);
+		printf("    block bitmap: %d\n", group->bg_block_bitmap); 
+		printf("    inode bitmap: %d\n", group->bg_inode_bitmap);
+		printf("    inode table: %d\n", group->bg_inode_table);
+		printf("    free blocks: %d\n", group->bg_free_blocks_count);
+		printf("    free inodes: %d\n", group->bg_free_inodes_count);
+		printf("    used_dirs: %d\n", group->bg_used_dirs_count); 
 	}
 	else
 	{
 		printf("%d, %d, %d, %d, %d, %d\n",
-			   /* TODO */,
-			   /* TODO */,
-			   /* TODO */,
-			   /* TODO */,
-			   /* TODO */,
-			   /* TODO */);
+			group->bg_block_bitmap,
+			group->bg_inode_bitmap,
+			group->bg_inode_table,
+			group->bg_free_blocks_count,
+			group->bg_free_inodes_count,
+			group->bg_used_dirs_count);
 	}
 }
 
