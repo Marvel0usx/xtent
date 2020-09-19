@@ -198,8 +198,8 @@ int main(int argc, char *argv[])
 						printf("%d ", inum);
 					}
 				}
+				printf("\n");
 			}
-			printf("\n");
 		}
 	} else {
 		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + EXT2_ROOT_INO ; 
@@ -255,8 +255,8 @@ int main(int argc, char *argv[])
 						printf("%d ", inum);
 					}
 				}
+				printf("\n");
 			}
-			printf("\n");
 		}
 	}
 
