@@ -167,7 +167,6 @@ int main(int argc, char *argv[])
 		printf("\n");
 
 		for (unsigned int idx = 11; idx < sb->s_inodes_count; idx++) {
-			printf("idx: %d usage: %d", idx, is_used(idx));
 			if (is_used(inode_start, idx)) {
 				struct ext2_inode *this_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + idx;
 				printf("[%d] Blocks: ", idx);
@@ -183,7 +182,17 @@ int main(int argc, char *argv[])
 				printf("links: %d ", this_inode->i_links_count);
 				printf("blocks: %d\n", this_inode->i_blocks);
 				
-				for (int jdx = 0; jdx < this_inode->i_blocks; ) {
+				unsigned char num_inode_used;
+
+				if (this_inode->i_blocks == 6) {
+					num_inode_used = 3;
+				} else if (this_inode->i_blocks > 24) {
+					num_inode_used = 13;
+				} else {
+					num_inode_used = this_inode->i_blocks;
+				}
+
+				for (int jdx = 0; jdx < num_inode_used; ) {
 					unsigned int inum;
 					if ((inum = this_inode->i_block[jdx++]) != 0) {
 						printf("%d ", inum);
