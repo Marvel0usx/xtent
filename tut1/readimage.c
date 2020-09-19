@@ -63,6 +63,14 @@ static void print_bitmap(unsigned char *block_start, int block_count) {
 	printf("\n");
 }
 
+static void is_used(unsigned char *block_start, unsigned int idx) {
+	unsigned int bitmap_group_idx = idx / 8;
+	unsigned int position_in_group = idx % 8;
+
+	unsigned char *bitmap_group = block_start + bitmap_group_idx;
+	return (*bitmap_group & (1 << position_in_group)) != 0;
+}
+
 int main(int argc, char *argv[])
 {
 	int option;
@@ -152,11 +160,15 @@ int main(int argc, char *argv[])
 		printf("[%d] Blocks: ", EXT2_ROOT_INO);
 		for (int idx = 0; idx < root_inode->i_blocks; ) {
 			unsigned int inum;
-			if (inum = root_inode->i_block[idx++] != 0) {
+			if ((inum = root_inode->i_block[idx++]) != 0) {
 				printf("%d ", inum);
 			}
 		};
 		printf("\n");
+
+		for (unsigned int idx = 11; idx < sb->s_inodes_count; idx++) {
+			printf("%d ", is_used(inode_start, idx));
+		}
 	} else {
 
 	}
