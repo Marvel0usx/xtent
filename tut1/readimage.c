@@ -49,7 +49,7 @@ void print_usage()
 static void print_bitmap(unsigned char *block_start, int block_count) {
 	for (int num = 0; num < block_count / 8; num++) {
 		unsigned char block = *(block_start + num);
-		for (int idx = 7; idx >= 0; idx--) {
+		for (int idx = 0; idx <= 7; idx++) {
 			// printf("%d", block & (1 << idx));
 			unsigned char bit = block & (1<< idx);
 			if (bit) {
@@ -135,23 +135,25 @@ int main(int argc, char *argv[])
 	if (verbose) {
 		printf("Inodes:\n");
 		// print root node
-		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table);
+		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + EXT2_ROOT_INO; 
 		printf("[%d] ", EXT2_ROOT_INO);
 		printf("type: ");
-		if (root_inode->i_mode == EXT2_S_IFDIR) {
+		if (root_inode->i_mode == EXT2_S_IFREG) {
+			printf("f ");
+		} else if (root_inode->i_mode == EXT2_S_IFDIR) {
 			printf("d ");
-		} else if (root_inode->i_mode == EXT2_S_IFREG) {
-			print("f ");
-		}
+		} else {
+			printf("%d ", root_inode->i_mode);}
 
 		printf("size: %d ", root_inode->i_size);
-		printf("links: %d", root_inode->i_links_count);
-		printf("blocks: %d", root_inode->i_blocks / 2);
+		printf("links: %d ", root_inode->i_links_count);
+		printf("blocks: %d\n", root_inode->i_blocks);
 
 		printf("[%d] ", EXT2_ROOT_INO);
 		if (root_inode->i_blocks == 6) {
 			for (int idx = 0; idx < 3; printf("%d ", root_inode->i_block[idx++]));
 		}
+		printf("\n");
 	} else {
 
 	}
