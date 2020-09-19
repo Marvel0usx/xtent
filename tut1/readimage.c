@@ -63,7 +63,7 @@ static void print_bitmap(unsigned char *block_start, int block_count) {
 	printf("\n");
 }
 
-static void is_used(unsigned char *block_start, unsigned int idx) {
+static int is_used(unsigned char *block_start, unsigned int idx) {
 	unsigned int bitmap_group_idx = idx / 8;
 	unsigned int position_in_group = idx % 8;
 
@@ -167,7 +167,16 @@ int main(int argc, char *argv[])
 		printf("\n");
 
 		for (unsigned int idx = 11; idx < sb->s_inodes_count; idx++) {
-			printf("%d ", is_used(inode_start, idx));
+			if (is_used(inode_start, idx)) {
+				struct ext2_inode *this_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + 11 + idx;
+				printf("[%d] Blocks: ", 11 + idx);
+				for (int jdx = 0; jdx < this_inode->i_blocks; ) {
+					unsigned int inum;
+					if ((inum = this_inode->i_block[jdx++]) != 0) {
+						printf("%d ", inum);
+					}
+				}
+			}
 		}
 	} else {
 
