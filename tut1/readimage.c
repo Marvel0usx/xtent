@@ -46,6 +46,17 @@ void print_usage()
 	fprintf(stderr, "     -v will print the output in verbose format for easy viewing\n");
 }
 
+static void print_bitmap(unsigned char *block_start, int block_count) {
+	for (int num = 0; num < block_count; num++) {
+		unsigned char block = *(block_start + num);
+		for (int idx = 7; idx >= 0; idx--) {
+			printf("%d", block & (1 << idx));
+		}
+		printf(" ");
+	}
+	printf("\n");
+}
+
 int main(int argc, char *argv[])
 {
 	int option;
@@ -103,6 +114,18 @@ int main(int argc, char *argv[])
 	print_blockgroup(group, verbose);
 
 	/*TODO*/
+	unsigned char *block_start = (unsigned char *) (disk + EXT2_BLOCK_SIZE * group->bg_block_bitmap);
+	unsigned char *inode_start = (unsigned char *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_bitmap);
+	
+	if (verbose) {
+		printf("Block bitmap: ");
+		print_bitmap(block_start, sb->s_blocks_count);
+		printf("Inode bitmap: ");
+		print_bitmap(inode_start, sb->s_inodes_count);
+	} else {
+		print_bitmap(block_start, sb->s_blocks_count);
+		print_bitmap(inode_start, sb->s_inodes_count);
+	}
 
 	return 0;
 }
