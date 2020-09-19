@@ -135,12 +135,12 @@ int main(int argc, char *argv[])
 	if (verbose) {
 		printf("Inodes:\n");
 		// print root node
-		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + EXT2_ROOT_INO; 
+		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + EXT2_ROOT_INO ; 
 		printf("[%d] ", EXT2_ROOT_INO);
 		printf("type: ");
-		if (root_inode->i_mode == EXT2_S_IFREG) {
+		if (root_inode->i_mode & EXT2_S_IFREG) {
 			printf("f ");
-		} else if (root_inode->i_mode == EXT2_S_IFDIR) {
+		} else if (root_inode->i_mode & EXT2_S_IFDIR) {
 			printf("d ");
 		} else {
 			printf("%d ", root_inode->i_mode);}
