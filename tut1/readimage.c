@@ -170,6 +170,18 @@ int main(int argc, char *argv[])
 			if (is_used(inode_start, idx)) {
 				struct ext2_inode *this_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + 11 + idx;
 				printf("[%d] Blocks: ", 11 + idx);
+				printf("type: ");
+				if (this_inode->i_mode & EXT2_S_IFREG) {
+					printf("f ");
+				} else if (this_inode->i_mode & EXT2_S_IFDIR) {
+					printf("d ");
+				} else {
+					printf("%d ", this_inode->i_mode);}
+
+				printf("size: %d ", this_inode->i_size);
+				printf("links: %d ", this_inode->i_links_count);
+				printf("blocks: %d\n", this_inode->i_blocks);
+				
 				for (int jdx = 0; jdx < this_inode->i_blocks; ) {
 					unsigned int inum;
 					if ((inum = this_inode->i_block[jdx++]) != 0) {
@@ -177,6 +189,7 @@ int main(int argc, char *argv[])
 					}
 				}
 			}
+			printf("\n");
 		}
 	} else {
 
