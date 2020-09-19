@@ -47,7 +47,7 @@ void print_usage()
 }
 
 static void print_bitmap(unsigned char *block_start, int block_count) {
-	for (int num = 0; num < block_count; num++) {
+	for (int num = 0; num < block_count / 8; num++) {
 		unsigned char block = *(block_start + num);
 		for (int idx = 7; idx >= 0; idx--) {
 			printf("%d", block & (1 << idx));
