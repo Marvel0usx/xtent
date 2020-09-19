@@ -213,12 +213,12 @@ int main(int argc, char *argv[])
 
 		printf("%d, ", root_inode->i_size);
 		printf("%d, ", root_inode->i_links_count);
-		printf("%d |  ", root_inode->i_blocks);
+		printf("%d | ", root_inode->i_blocks);
 
 		for (int idx = 0; idx < root_inode->i_blocks; ) {
 			unsigned int inum;
 			if ((inum = root_inode->i_block[idx++]) != 0) {
-				printf("%d ", inum);
+				printf(" %d", inum);
 			}
 		};
 		printf("\n");
@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
 
 				printf("%d, ", this_inode->i_size);
 				printf("%d, ", this_inode->i_links_count);
-				printf("%d |  ", this_inode->i_blocks);
+				printf("%d | ", this_inode->i_blocks);
 				
 				unsigned char num_inode_used;
 
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 				for (int jdx = 0; jdx < num_inode_used; ) {
 					unsigned int inum;
 					if ((inum = this_inode->i_block[jdx++]) != 0) {
-						printf("%d ", inum);
+						printf(" %d", inum);
 					}
 				}
 				printf("\n");
