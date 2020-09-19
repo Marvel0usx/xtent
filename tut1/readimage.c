@@ -119,7 +119,6 @@ int main(int argc, char *argv[])
 	const struct ext2_group_desc *group = (const struct ext2_group_desc *)(disk + EXT2_BLOCK_SIZE * 2);
 	print_blockgroup(group, verbose);
 
-	/*TODO*/
 	unsigned char *block_start = (unsigned char *) (disk + EXT2_BLOCK_SIZE * group->bg_block_bitmap);
 	unsigned char *inode_start = (unsigned char *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_bitmap);
 	
@@ -131,6 +130,30 @@ int main(int argc, char *argv[])
 	} else {
 		print_bitmap(block_start, sb->s_blocks_count);
 		print_bitmap(inode_start, sb->s_inodes_count);
+	}
+
+	if (verbose) {
+		printf("Inodes:\n");
+		// print root node
+		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table);
+		printf("[%d] ", EXT2_ROOT_INO);
+		printf("type: ");
+		if (root_inode->i_mode == EXT2_S_IFDIR) {
+			printf("d ");
+		} else if (root_inode->i_mode == EXT2_S_IFREG) {
+			print("f ");
+		}
+
+		printf("size: %d ", root_inode->i_size);
+		printf("links: %d", root_inode->i_links_count);
+		printf("blocks: %d", root_inode->i_blocks / 2);
+
+		printf("[%d] ", EXT2_ROOT_INO);
+		if (root_inode->i_blocks == 6) {
+			for (int idx = 0; idx < 3; printf("%d ", root_inode->i_block[idx++]));
+		}
+	} else {
+
 	}
 
 	return 0;
