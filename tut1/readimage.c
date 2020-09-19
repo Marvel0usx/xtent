@@ -50,7 +50,13 @@ static void print_bitmap(unsigned char *block_start, int block_count) {
 	for (int num = 0; num < block_count / 8; num++) {
 		unsigned char block = *(block_start + num);
 		for (int idx = 7; idx >= 0; idx--) {
-			printf("%d", block & (1 << idx));
+			// printf("%d", block & (1 << idx));
+			unsigned char bit = block & (1<< idx);
+			if (bit) {
+				printf("1");
+			} else {
+				printf("0");
+			}
 		}
 		printf(" ");
 	}
