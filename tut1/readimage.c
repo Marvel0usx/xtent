@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 				} else {
 					num_inode_used = this_inode->i_blocks;
 				}
-
+				printf("[%d] Blocks ", idx);
 				for (int jdx = 0; jdx < num_inode_used; ) {
 					unsigned int inum;
 					if ((inum = this_inode->i_block[jdx++]) != 0) {
@@ -202,7 +202,62 @@ int main(int argc, char *argv[])
 			printf("\n");
 		}
 	} else {
+		struct ext2_inode *root_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + EXT2_ROOT_INO ; 
+		printf("[%d] ", EXT2_ROOT_INO);
+		if (root_inode->i_mode & EXT2_S_IFREG) {
+			printf("f, ");
+		} else if (root_inode->i_mode & EXT2_S_IFDIR) {
+			printf("d, ");
+		} else {
+			printf("%d, ", root_inode->i_mode);}
 
+		printf("%d, ", root_inode->i_size);
+		printf("%d, ", root_inode->i_links_count);
+		printf("%d |  ", root_inode->i_blocks);
+
+		for (int idx = 0; idx < root_inode->i_blocks; ) {
+			unsigned int inum;
+			if ((inum = root_inode->i_block[idx++]) != 0) {
+				printf("%d ", inum);
+			}
+		};
+		printf("\n");
+
+		for (unsigned int idx = 11; idx < sb->s_inodes_count; idx++) {
+			if (is_used(inode_start, idx)) {
+				struct ext2_inode *this_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + idx;
+				printf("[%d] ", idx);
+				if (this_inode->i_mode & EXT2_S_IFREG) {
+					printf("f, ");
+				} else if (this_inode->i_mode & EXT2_S_IFDIR) {
+					printf("d, ");
+				} else {
+					printf("%d, ", this_inode->i_mode);
+				}
+
+				printf("%d, ", this_inode->i_size);
+				printf("%d, ", this_inode->i_links_count);
+				printf("%d |  ", this_inode->i_blocks);
+				
+				unsigned char num_inode_used;
+
+				if (this_inode->i_blocks == 6) {
+					num_inode_used = 3;
+				} else if (this_inode->i_blocks > 24) {
+					num_inode_used = 13;
+				} else {
+					num_inode_used = this_inode->i_blocks;
+				}
+				
+				for (int jdx = 0; jdx < num_inode_used; ) {
+					unsigned int inum;
+					if ((inum = this_inode->i_block[jdx++]) != 0) {
+						printf("%d ", inum);
+					}
+				}
+			}
+			printf("\n");
+		}
 	}
 
 	return 0;
