@@ -167,9 +167,10 @@ int main(int argc, char *argv[])
 		printf("\n");
 
 		for (unsigned int idx = 11; idx < sb->s_inodes_count; idx++) {
+			printf("idx: %d usage: %d", idx, is_used(idx));
 			if (is_used(inode_start, idx)) {
-				struct ext2_inode *this_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + 11 + idx;
-				printf("[%d] Blocks: ", 11 + idx);
+				struct ext2_inode *this_inode = (struct ext2_inode *) (disk + EXT2_BLOCK_SIZE * group->bg_inode_table) + idx;
+				printf("[%d] Blocks: ", idx);
 				printf("type: ");
 				if (this_inode->i_mode & EXT2_S_IFREG) {
 					printf("f ");
