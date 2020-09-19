@@ -149,10 +149,13 @@ int main(int argc, char *argv[])
 		printf("links: %d ", root_inode->i_links_count);
 		printf("blocks: %d\n", root_inode->i_blocks);
 
-		printf("[%d] ", EXT2_ROOT_INO);
-		if (root_inode->i_blocks == 6) {
-			for (int idx = 0; idx < 3; printf("%d ", root_inode->i_block[idx++]));
-		}
+		printf("[%d] Blocks: ", EXT2_ROOT_INO);
+		for (int idx = 0; idx < root_inode->i_blocks; ) {
+			unsigned int inum;
+			if (inum = root_inode->i_block[idx++] != 0) {
+				printf("%d ", inum);
+			}
+		};
 		printf("\n");
 	} else {
 
