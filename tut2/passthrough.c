@@ -42,6 +42,7 @@ static bool get_path(char *buf, size_t size, const char *path)
  */
 static int passthrough_statfs(const char *path, struct statvfs *st)
 {
+	fprintf(stderr, "statfs(%s, %p)\n", path, (void *)st);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -53,6 +54,7 @@ static int passthrough_statfs(const char *path, struct statvfs *st)
  */
 static int passthrough_getattr(const char *path, struct stat *st)
 {
+	fprintf(stderr, "getattr(%s, %p)\n", path, (void *)st);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -67,6 +69,7 @@ static int passthrough_getattr(const char *path, struct stat *st)
 static int passthrough_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                                off_t offset, struct fuse_file_info *fi)
 {
+	fprintf(stderr, "readdir(%s, %p, %ld)\n", path, buf, offset);
 	(void)offset;// unused
 	(void)fi;// unused
 
@@ -92,6 +95,7 @@ static int passthrough_readdir(const char *path, void *buf, fuse_fill_dir_t fill
  */
 static int passthrough_readlink(const char *path, char *buf, size_t size)
 {
+	fprintf(stderr, "readlink(%s, %s, %ld)\n", path, buf, size);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -107,6 +111,7 @@ static int passthrough_readlink(const char *path, char *buf, size_t size)
  */
 static int passthrough_mkdir(const char *path, mode_t mode)
 {
+	fprintf(stderr, "mkdir(%s, %d)\n", path, mode);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -118,6 +123,7 @@ static int passthrough_mkdir(const char *path, mode_t mode)
  */
 static int passthrough_rmdir(const char *path)
 {
+	fprintf(stderr, "rmdir(%s)\n", path);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -130,6 +136,7 @@ static int passthrough_rmdir(const char *path)
 static int passthrough_create(const char *path, mode_t mode,
                               struct fuse_file_info *fi)
 {
+	fprintf(stderr, "create(%s, %d)\n", path, mode);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -142,6 +149,7 @@ static int passthrough_create(const char *path, mode_t mode,
  */
 static int passthrough_unlink(const char *path)
 {
+	fprintf(stderr, "unlink(%s)\n", path);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -153,6 +161,7 @@ static int passthrough_unlink(const char *path)
  */
 static int passthrough_rename(const char *from, const char *to)
 {
+	fprintf(stderr, "rename(%s, %s)\n", from, to);
 	char from_abs_path[PATH_MAX], to_abs_path[PATH_MAX];
 	if (!get_path(from_abs_path, sizeof(from_abs_path), from) ||
 	    !get_path(to_abs_path, sizeof(to_abs_path), to))
@@ -169,6 +178,7 @@ static int passthrough_rename(const char *from, const char *to)
  */
 static int passthrough_utimens(const char *path, const struct timespec times[2])
 {
+	fprintf(stderr, "utimens(%s, %p)\n", path, (void *)times);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -181,6 +191,7 @@ static int passthrough_utimens(const char *path, const struct timespec times[2])
  */
 static int passthrough_truncate(const char *path, off_t size)
 {
+	fprintf(stderr, "truncate(%s, %ld)\n", path, size);
 	char abs_path[PATH_MAX];
 	if (!get_path(abs_path, sizeof(abs_path), path)) return -ENAMETOOLONG;
 
@@ -194,6 +205,7 @@ static int passthrough_truncate(const char *path, off_t size)
 static int passthrough_read(const char *path, char *buf, size_t size,
                             off_t offset, struct fuse_file_info *fi)
 {
+	fprintf(stderr, "read(%s, %s, %ld, %ld)\n", path, buf, size, offset);
 	(void)fi;// unused
 
 	char abs_path[PATH_MAX];
@@ -213,6 +225,7 @@ static int passthrough_read(const char *path, char *buf, size_t size,
 static int passthrough_write(const char *path, const char *buf, size_t size,
                              off_t offset, struct fuse_file_info *fi)
 {
+	fprintf(stderr, "write(%s, %s, %ld, %ld)\n", path, buf, size, offset);
 	(void)fi;// unused
 
 	char abs_path[PATH_MAX];
