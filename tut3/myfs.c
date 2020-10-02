@@ -59,6 +59,24 @@ void populate_fs( FILE *fp) {
 }
 
 
+static path_lookup_helper(char *path, int inumber) {
+    if (path == NULL) {
+        return inumber;     // Reaches to the end.
+    } else if (itable[inumber]->type == 'f') {
+        return -1;      // Bad path: cannot parse path like file/dir/...
+    } else {
+        char *filename = strsep(&path, "/");
+        for (int idx = 0; idx < MAX_DIRS; idx++) {
+            struct dir_entry *this_dir = blocks[itable[inumber]->block_no][idx];
+            if (strcmp(this_dir->name, filename) == 0) {
+                return path_lookup_helper(path, this_dir->inode);
+            }
+        }
+        return -1;
+    }
+}
+
+
 /* Returns the inode number for the element at the end of the path
  * if it exists.  If there is any error, return -1.
  * Possible errors include:
@@ -71,9 +89,11 @@ int path_lookup(char *path) {
         return -1;
     } 
 
-	// TODO: complete this function and any helper functions
-
-    return -1;
+    strsep(&path, "/");
+    if (strcmp(path, "") == 0)
+        return ROOT_INODE;
+    else
+        return path_lookup_helper(path, ROOT_INODE);
 }
 
 
