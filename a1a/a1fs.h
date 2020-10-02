@@ -50,9 +50,28 @@ typedef struct a1fs_superblock {
 	uint64_t magic;
 	/** File system size in bytes. */
 	uint64_t size;
-
-	//TODO: add necessary fields
-
+	/** Number of data blocks. */
+	uint32_t s_num_blocks;
+    /** Number of inodes. */
+	uint32_t s_num_inodes;
+    /** Number of data bitmaps in contiguous blocks. */
+	uint16_t s_num_data_bitmaps;
+    /** Number of inode bitmaps in contiguous blocks. */
+	uint16_t s_num_inode_bitmaps;
+    /** Pointer to the first inode bitmap. */
+	a1fs_blk_t s_inode_bitmap;
+    /** Pointer to the first data bitmap. */
+	a1fs_blk_t s_data_bitmap;
+    /** Pointer to the first data block. */
+	a1fs_blk_t s_first_block;
+    /** Pointer to the root inode. */
+    a1fs_blk_t s_root;
+    /** Number of reserved blocks. */
+	uint32_t s_num_reserved_blocks;
+    /** Number of free inodes. */
+	uint32_t s_num_free_inodes;
+    /** Number of free data blocks. */
+	uint32_t s_num_free_blocks;    
 } a1fs_superblock;
 
 // Superblock must fit into a single block
@@ -74,35 +93,29 @@ typedef struct a1fs_extent {
 typedef struct a1fs_inode {
 	/** File mode. */
 	mode_t mode;
-
-	/**
-	 * Reference count (number of hard links).
-	 *
-	 * Each file is referenced by its parent directory. Each directory is
-	 * referenced by its parent directory, itself (via "."), and each
-	 * subdirectory (via ".."). The "parent directory" of the root directory is
-	 * the root directory itself.
-	 */
+	/** Reference count (number of hard links). */
 	uint32_t links;
-
 	/** File size in bytes. */
 	uint64_t size;
 
 	/**
 	 * Last modification timestamp.
 	 *
-	 * Must be updated when the file (or directory) is created, written to, or
-	 * its size changes. Use the clock_gettime() function from time.h with the
-	 * CLOCK_REALTIME clock; see "man 3 clock_gettime" for details.
+	 * Use the CLOCK_REALTIME clock; see "man 3 clock_gettime". Must be updated
+	 * when the file (or directory) is created, written to, or its size changes.
 	 */
 	struct timespec mtime;
 
-	//TODO: add necessary fields
+	/** Total number of extents. */
+	uint32_t i_extents;
+	/** Pointer to an array of extents. */
+	a1fs_blk_t i_ptr_extent;
 
 	//NOTE: You might have to add padding (e.g. a dummy char array field) at the
 	// end of the struct in order to satisfy the assertion below. Try to keep
 	// the size of this struct minimal, but don't worry about the "wasted space"
 	// introduced by the required padding.
+	char extra[24];
 
 } a1fs_inode;
 
