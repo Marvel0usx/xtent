@@ -58,13 +58,13 @@ typedef struct a1fs_superblock {
 	uint16_t s_num_data_bitmaps;
     /** Number of inode bitmaps in contiguous blocks. */
 	uint16_t s_num_inode_bitmaps;
-    /** Pointer to the first inode bitmap. */
+    /** Block number of the first inode bitmap. */
 	a1fs_blk_t s_inode_bitmap;
-    /** Pointer to the first data bitmap. */
+    /** Block number of the first data bitmap. */
 	a1fs_blk_t s_data_bitmap;
-    /** Pointer to the first data block. */
+    /** Block number of the first data block. */
 	a1fs_blk_t s_first_block;
-    /** Pointer to the root inode. */
+    /** Block number of the root inode. */
     a1fs_blk_t s_root;
     /** Number of reserved blocks. */
 	uint32_t s_num_reserved_blocks;
@@ -75,7 +75,7 @@ typedef struct a1fs_superblock {
 } a1fs_superblock;
 
 // Superblock must fit into a single block
-static_assert(sizeof(a1fs_superblock) <= A1FS_BLOCK_SIZE,
+_assert(sizeof(a1fs_superblock) <= A1FS_BLOCK_SIZE,
               "superblock is too large");
 
 
@@ -108,7 +108,7 @@ typedef struct a1fs_inode {
 
 	/** Total number of extents. */
 	uint32_t i_extents;
-	/** Pointer to an array of extents. */
+	/** Block number of an array of extents. */
 	a1fs_blk_t i_ptr_extent;
 
 	//NOTE: You might have to add padding (e.g. a dummy char array field) at the
@@ -120,7 +120,7 @@ typedef struct a1fs_inode {
 } a1fs_inode;
 
 // A single block must fit an integral number of inodes
-static_assert(A1FS_BLOCK_SIZE % sizeof(a1fs_inode) == 0, "invalid inode size");
+_assert(A1FS_BLOCK_SIZE % sizeof(a1fs_inode) == 0, "invalid inode size");
 
 
 /** Maximum file name (path component) length. Includes the null terminator. */
