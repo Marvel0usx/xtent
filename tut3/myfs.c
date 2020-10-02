@@ -59,15 +59,15 @@ void populate_fs( FILE *fp) {
 }
 
 
-static path_lookup_helper(char *path, int inumber) {
+static int path_lookup_helper(char *path, int inumber) {
     if (path == NULL) {
         return inumber;     // Reaches to the end.
-    } else if (itable[inumber]->type == 'f') {
+    } else if (itable[inumber].type == 'f') {
         return -1;      // Bad path: cannot parse path like file/dir/...
     } else {
         char *filename = strsep(&path, "/");
         for (int idx = 0; idx < MAX_DIRS; idx++) {
-            struct dir_entry *this_dir = blocks[itable[inumber]->block_no][idx];
+            struct dir_entry *this_dir = &blocks[itable[inumber].block_no][idx];
             if (strcmp(this_dir->name, filename) == 0) {
                 return path_lookup_helper(path, this_dir->inode);
             }
