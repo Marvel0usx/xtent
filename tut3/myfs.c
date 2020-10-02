@@ -63,7 +63,7 @@ static int path_lookup_helper(char *path, int inumber) {
     if (path == NULL) {
         return inumber;     // Reaches to the end.
     } else if (itable[inumber].type == 'f') {
-        return -1;      // Bad path: cannot parse path like file/dir/...
+        return -1;          // Bad path: cannot parse path like file/dir/...
     } else {
         char *filename = strsep(&path, "/");
         for (int idx = 0; idx < MAX_DIRS; idx++) {
@@ -88,12 +88,16 @@ int path_lookup(char *path) {
         fprintf(stderr, "Not an absolute path\n");
         return -1;
     } 
-
-    strsep(&path, "/");
-    if (strcmp(path, "") == 0)
-        return ROOT_INODE;
+    char *path_copy, *path_original;
+    path_copy = path_original = strdup(path);
+    strsep(&path_copy, "/");
+    int err;
+    if (strcmp(path_copy, "") == 0)
+        err = ROOT_INODE;
     else
-        return path_lookup_helper(path, ROOT_INODE);
+        err = path_lookup_helper(path_copy, ROOT_INODE);
+    free(path_original);
+    return err;
 }
 
 
