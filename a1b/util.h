@@ -22,6 +22,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define IS_ZERO(x) ((x) == 0)
+#define NOT_ZERO(x) ((x) != 0)
 
 /** Check if x is a power of 2. */
 static inline bool is_powerof2(size_t x)

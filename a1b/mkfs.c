@@ -22,9 +22,11 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "a1fs.h"
 #include "map.h"
+#include "util.h"
 
 
 /** Command line options. */
@@ -96,8 +98,50 @@ static bool parse_args(int argc, char *argv[], mkfs_opts *opts)
 static bool a1fs_is_present(void *image)
 {
 	//TODO: check if the image already contains a valid a1fs superblock
-	(void)image;
-	return true;
+	a1fs_superblock *s = (a1fs_superblock *) image;
+	int is_valid = true;
+	if (s->magic != A1FS_MAGIC) {
+		is_valid = false;
+	} else if (IS_ZERO(s->size)) {
+		is_valid = false;
+	} else if (IS_ZERO(s->s_num_blocks)) {
+		is_valid = false;
+	} else if (IS_ZERO(s->s_num_inodes)) {
+		is_valid = false;
+	} else if (IS_ZERO(s->s_num_data_bitmaps)) {
+		is_valid = false;
+	} else if (IS_ZERO(s->s_num_inode_tables)) {
+		is_valid = false;
+	}
+	// superblock + inode bitmap + num_data_bitmaps + inode_tables
+	int num_reserved_blk = 2 + s->s_num_data_bitmaps + s->s_num_inode_tables;
+	if (num_reserved_blk != s->s_num_reserved_blocks) {
+		is_valid = false;
+	}
+	int num_data_bitmaps = (uint32_t) s->s_num_blocks / A1FS_BLOCK_SIZE;
+	if (num_data_bitmaps != s->s_num_data_bitmaps) {
+		is_valid = false;
+	}
+	int num_inode_tables = (uint32_t) s->s_num_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
+	if (num_inode_tables != s->s_num_inode_tables) {
+		is_valid = false;
+	}
+	int total_blocks = s->s_num_blocks + s->s_num_reserved_blocks;
+	if (total_blocks != s->size / A1FS_BLOCK_SIZE) {
+		is_valid = false;
+	}
+	int num_inode_bitmaps = s->s_num_inodes / A1FS_BLOCK_SIZE;
+	if (num_inode_bitmaps != s->s_num_inode_bitmaps) {
+		is_valid = false;
+	}
+
+	// Check root
+	a1fs_inode *root = (a1fs_inode *) (image + s->s_inode_table * A1FS_BLOCK_SIZE);
+	if (root->mode != (S_IFDIR | 0777)) {
+		is_valid = false;
+	}
+
+	return is_valid;
 }
 
 
@@ -116,9 +160,31 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 {
 	//TODO: initialize the superblock and create an empty root directory
 	//NOTE: the mode of the root directory inode should be set to S_IFDIR | 0777
-	(void)image;
-	(void)size;
-	(void)opts;
+	a1fs_superblock *s = (a1fs_superblock *) image;
+	s->magic = A1FS_MAGIC;
+	s->size = size;
+	s->s_num_blocks = size / A1FS_BLOCK_SIZE;
+	s->s_num_inodes = opts->n_inodes;
+	s->s_num_inode_table = opts->n_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
+	s->s_inode_bitmap = opts->n_inodes / A1FS_BLOCK_SIZE;
+	s->s_num_data_bitmaps = s->s_num_blocks / A1FS_BLOCK_SIZE;
+
+	s->s_inode_bitmap = (a1fs_blk_t) 1;
+	s->s_data_bitmap = (a1fs_blk_t) (1 + s->s_num_inode_bitmaps);
+	s->s_inode_table = (a1fs_blk_t) (s->s_data_bitmap + s->s_num_data_bitmaps);
+	s->s_first_block = (a1fs_blk_t) (s->s_inode_table + s->s_num_inode_tables);
+	s->s_num_reserved_blocks = 1 + s->s_num_inode_bitmaps + s->s_num_data_bitmaps + s->s_num_inode_tables;
+	s->s_num_free_inodes = s->s_num_inodes - 1;
+	s->s_num_free_blocks = s->s_num_blocks - s->s_num_reserved_blocks;
+
+	a1fs_inode *root = (a1fs_inode *) (image + s->s_inode_table * A1FS_BLOCK_SIZE);
+	root->mode = (mode_t) (S_IFDIR | 0777);
+	root->links = 2;
+	root->size = 0;
+	root->mtime = clock_gettime();
+	unsigned char bitmap[] = (unsigned char *) (image + s->s_inode_bitmap * A1FS_BLOCK_SIZE);
+	bitmap[0] = 1;
+
 	return false;
 }
 

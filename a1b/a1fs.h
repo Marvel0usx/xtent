@@ -52,6 +52,30 @@ typedef struct a1fs_superblock {
 	uint64_t size;
 
 	//TODO: add necessary fields
+	/** Number of data blocks. */
+	uint32_t s_num_blocks;
+	/** Number of inodes. */
+	uint32_t s_num_inodes;
+	/** Number of inode bitmaps. */
+	uint16_t s_num_inode_bitmaps;
+	/** Number of data bitmaps in contiguous blocks. */
+	uint16_t s_num_data_bitmaps;
+	/** Number of inode tables. */
+	uint16_t s_num_inode_tables;
+	/** Block number of the first inode bitmap. */
+	a1fs_blk_t s_inode_bitmap;
+	/** Block number of the first data bitmap. */
+	a1fs_blk_t s_data_bitmap;
+	/** Block number of the first inode table. */
+	a1fs_blk_t s_inode_table;
+	/** Block number of the first data block. */
+	a1fs_blk_t s_first_block;
+	/** Number of reserved blocks. */
+	uint32_t s_num_reserved_blocks;
+	/** Number of free inodes. */
+	uint32_t s_num_free_inodes;
+	/** Number of free data blocks. */
+	uint32_t s_num_free_blocks;
 
 } a1fs_superblock;
 
@@ -99,10 +123,16 @@ typedef struct a1fs_inode {
 
 	//TODO: add necessary fields
 
+	/** Total number of extents. */
+	uint32_t i_extents;
+	/** Block number of an array of extents. */
+	a1fs_blk_t i_ptr_extent;
+
 	//NOTE: You might have to add padding (e.g. a dummy char array field) at the
 	// end of the struct in order to satisfy the assertion below. Try to keep
 	// the size of this struct minimal, but don't worry about the "wasted space"
 	// introduced by the required padding.
+	char extra[24];
 
 } a1fs_inode;
 
