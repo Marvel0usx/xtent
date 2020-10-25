@@ -114,23 +114,23 @@ static bool a1fs_is_present(void *image)
 		is_valid = false;
 	}
 	// superblock + inode bitmap + num_data_bitmaps + inode_tables
-	int num_reserved_blk = 2 + s->s_num_data_bitmaps + s->s_num_inode_tables;
+	unsigned int num_reserved_blk = 2 + s->s_num_data_bitmaps + s->s_num_inode_tables;
 	if (num_reserved_blk != s->s_num_reserved_blocks) {
 		is_valid = false;
 	}
-	int num_data_bitmaps = (uint32_t) s->s_num_blocks / A1FS_BLOCK_SIZE;
+	unsigned int num_data_bitmaps = (uint32_t) s->s_num_blocks / A1FS_BLOCK_SIZE;
 	if (num_data_bitmaps != s->s_num_data_bitmaps) {
 		is_valid = false;
 	}
-	int num_inode_tables = (uint32_t) s->s_num_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
+	unsigned int num_inode_tables = (uint32_t) s->s_num_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
 	if (num_inode_tables != s->s_num_inode_tables) {
 		is_valid = false;
 	}
-	int total_blocks = s->s_num_blocks + s->s_num_reserved_blocks;
+	unsigned int total_blocks = s->s_num_blocks + s->s_num_reserved_blocks;
 	if (total_blocks != s->size / A1FS_BLOCK_SIZE) {
 		is_valid = false;
 	}
-	int num_inode_bitmaps = s->s_num_inodes / A1FS_BLOCK_SIZE;
+	unsigned int num_inode_bitmaps = s->s_num_inodes / A1FS_BLOCK_SIZE;
 	if (num_inode_bitmaps != s->s_num_inode_bitmaps) {
 		is_valid = false;
 	}
