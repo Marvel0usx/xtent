@@ -165,7 +165,7 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	s->size = size;
 	s->s_num_blocks = size / A1FS_BLOCK_SIZE;
 	s->s_num_inodes = opts->n_inodes;
-	s->s_num_inode_table = opts->n_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
+	s->s_num_inode_tables = opts->n_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
 	s->s_inode_bitmap = opts->n_inodes / A1FS_BLOCK_SIZE;
 	s->s_num_data_bitmaps = s->s_num_blocks / A1FS_BLOCK_SIZE;
 
@@ -181,8 +181,8 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	root->mode = (mode_t) (S_IFDIR | 0777);
 	root->links = 2;
 	root->size = 0;
-	root->mtime = clock_gettime();
-	unsigned char bitmap[] = (unsigned char *) (image + s->s_inode_bitmap * A1FS_BLOCK_SIZE);
+    clock_gettime(CLOCK_REALTIME, &(root->mtime));
+	unsigned char *bitmap = (unsigned char *) (image + s->s_inode_bitmap * A1FS_BLOCK_SIZE);
 	bitmap[0] = 1;
 
 	return false;
