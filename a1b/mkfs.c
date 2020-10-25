@@ -114,23 +114,22 @@ static bool a1fs_is_present(void *image)
 		is_valid = false;
 	}
 	// superblock + inode bitmap + num_data_bitmaps + inode_tables
-	unsigned int num_reserved_blk = 2 + s->s_num_data_bitmaps + s->s_num_inode_tables;
+	unsigned int num_reserved_blk = 1 + s->s_num_inode_bitmaps + s->s_num_data_bitmaps + s->s_num_inode_tables;
 	if (num_reserved_blk != s->s_num_reserved_blocks) {
 		is_valid = false;
 	}
-	unsigned int num_data_bitmaps = (uint32_t) s->s_num_blocks / A1FS_BLOCK_SIZE;
+	unsigned int num_data_bitmaps = (uint32_t) (s->s_num_blocks + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 	if (num_data_bitmaps != s->s_num_data_bitmaps) {
 		is_valid = false;
 	}
-	unsigned int num_inode_tables = (uint32_t) s->s_num_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
+	unsigned int num_inode_tables = (uint32_t) (s->s_num_inodes * sizeof(a1fs_inode) + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 	if (num_inode_tables != s->s_num_inode_tables) {
 		is_valid = false;
 	}
-	unsigned int total_blocks = s->s_num_blocks + s->s_num_reserved_blocks;
-	if (total_blocks != s->size / A1FS_BLOCK_SIZE) {
+	if (s->s_num_blocks != s->size / A1FS_BLOCK_SIZE) {
 		is_valid = false;
 	}
-	unsigned int num_inode_bitmaps = s->s_num_inodes / A1FS_BLOCK_SIZE;
+	unsigned int num_inode_bitmaps = (uint32_t) (s->s_num_inodes + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 	if (num_inode_bitmaps != s->s_num_inode_bitmaps) {
 		is_valid = false;
 	}
@@ -163,13 +162,12 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	a1fs_superblock *s = (a1fs_superblock *) image;
 	s->magic = A1FS_MAGIC;
 	s->size = size;
-	s->s_num_blocks = size / A1FS_BLOCK_SIZE;
+	s->s_num_blocks = size / A1FS_BLOCK_SIZE;	// this is equivalent to floor of size / 4K
 	s->s_num_inodes = opts->n_inodes;
-	s->s_num_inode_tables = opts->n_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
-	s->s_inode_bitmap = opts->n_inodes / A1FS_BLOCK_SIZE;
-	s->s_num_data_bitmaps = s->s_num_blocks / A1FS_BLOCK_SIZE;
+	s->s_num_inode_tables = (opts->n_inodes * sizeof(a1fs_inode) + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
+	s->s_num_inode_bitmaps = (opts->n_inodes + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
+	s->s_num_data_bitmaps = (s->s_num_blocks + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 
-	s->s_inode_bitmap = (a1fs_blk_t) 1;
 	s->s_data_bitmap = (a1fs_blk_t) (1 + s->s_num_inode_bitmaps);
 	s->s_inode_table = (a1fs_blk_t) (s->s_data_bitmap + s->s_num_data_bitmaps);
 	s->s_first_block = (a1fs_blk_t) (s->s_inode_table + s->s_num_inode_tables);
