@@ -1,0 +1,27 @@
+mkfs.c: In function ‘a1fs_is_present’:
+mkfs.c:118:23: error: comparison between signed and unsigned integer expressions [-Werror=sign-compare]
+  if (num_reserved_blk != s->s_num_reserved_blocks) {
+                       ^~
+mkfs.c:130:19: error: comparison between signed and unsigned integer expressions [-Werror=sign-compare]
+  if (total_blocks != s->size / A1FS_BLOCK_SIZE) {
+                   ^~
+mkfs.c: In function ‘mkfs’:
+mkfs.c:168:5: error: ‘a1fs_superblock {aka struct a1fs_superblock}’ has no member named ‘s_num_inode_table’; did you mean ‘s_num_inode_tables’?
+  s->s_num_inode_table = opts->n_inodes * sizeof(a1fs_inode) / A1FS_BLOCK_SIZE;
+     ^~~~~~~~~~~~~~~~~
+     s_num_inode_tables
+mkfs.c:184:16: error: too few arguments to function ‘clock_gettime’
+  root->mtime = clock_gettime();
+                ^~~~~~~~~~~~~
+In file included from mkfs.c:25:0:
+/usr/include/time.h:219:12: note: declared here
+ extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp) __THROW;
+            ^~~~~~~~~~~~~
+mkfs.c:185:27: error: invalid initializer
+  unsigned char bitmap[] = (unsigned char *) (image + s->s_inode_bitmap * A1FS_BLOCK_SIZE);
+                           ^
+mkfs.c:185:16: error: variable ‘bitmap’ set but not used [-Werror=unused-but-set-variable]
+  unsigned char bitmap[] = (unsigned char *) (image + s->s_inode_bitmap * A1FS_BLOCK_SIZE);
+                ^~~~~~
+cc1: all warnings being treated as errors
+make: *** [mkfs.o] Error 1
