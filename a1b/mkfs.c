@@ -134,7 +134,7 @@ static bool a1fs_is_present(void *image)
 		is_valid = false;
 	}
 	// Check root
-	a1fs_inode *root = (a1fs_inode *) (image + s->s_inode_table * A1FS_BLOCK_SIZE);
+	a1fs_inode *root = (a1fs_inode *) jump_to(image, s->s_inode_table, A1FS_BLOCK_SIZE);
 	if (root->mode != (S_IFDIR | 0777)) {
 		is_valid = false;
 	}
@@ -174,15 +174,28 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	s->s_num_free_inodes = s->s_num_inodes - 1;
 	s->s_num_free_blocks = s->s_num_blocks - s->s_num_reserved_blocks;
 
-	a1fs_inode *root = (a1fs_inode *) (image + s->s_inode_table * A1FS_BLOCK_SIZE);
+	a1fs_inode *root = (a1fs_inode *) jump_to(image, s->s_inode_table, A1FS_BLOCK_SIZE);
 	root->mode = (mode_t) (S_IFDIR | 0777);
 	root->links = 2;
 	root->size = 0;
     clock_gettime(CLOCK_REALTIME, &(root->mtime));
-	unsigned char *bitmap = (unsigned char *) (image + s->s_inode_bitmap * A1FS_BLOCK_SIZE);
-	bitmap[0] = 1;
-
-	return false;
+	unsigned char *bitmap;
+	// init inode bitmap
+	bitmap = get_first_inode_bitmap(image);
+	reset_bitmap(bitmap);
+	// safe to not check validity
+	mask(bitmap, 0);
+	// init data bitmap
+	bitmap = get_first_data_bitmap(image);
+	reset_bitmap(bitmap);
+	// reserve blocks
+	mask_range(bitmap, 0, s->s_num_reserved_blocks);
+	// init root directory
+	a1fs_dentry root_dir;
+	root->i_ptr_extent = (a1fs_blk_t) find_first_free_blk_num(image, LOOKUP_DB);
+	init_directory_blk(image, root->i_ptr_extent);
+	mask(image, root->i_ptr_extent, LOOKUP_DB);
+	return true;
 }
 
 
