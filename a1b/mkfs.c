@@ -113,11 +113,6 @@ static bool a1fs_is_present(void *image)
 	} else if (IS_ZERO(s->s_num_inode_tables)) {
 		is_valid = false;
 	}
-	// superblock + inode bitmap + num_data_bitmaps + inode_tables
-	unsigned int num_reserved_blk = 1 + s->s_num_inode_bitmaps + s->s_num_data_bitmaps + s->s_num_inode_tables;
-	if (num_reserved_blk != s->s_num_reserved_blocks) {
-		is_valid = false;
-	}
 	unsigned int num_data_bitmaps = (uint32_t) (s->s_num_blocks + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 	if (num_data_bitmaps != s->s_num_data_bitmaps) {
 		is_valid = false;
@@ -133,7 +128,11 @@ static bool a1fs_is_present(void *image)
 	if (num_inode_bitmaps != s->s_num_inode_bitmaps) {
 		is_valid = false;
 	}
-
+	// superblock + inode bitmap + num_data_bitmaps + inode_tables
+	unsigned int num_reserved_blk = 1 + num_inode_bitmaps + num_data_bitmaps + num_inode_tables;
+	if (num_reserved_blk != s->s_num_reserved_blocks) {
+		is_valid = false;
+	}
 	// Check root
 	a1fs_inode *root = (a1fs_inode *) (image + s->s_inode_table * A1FS_BLOCK_SIZE);
 	if (root->mode != (S_IFDIR | 0777)) {
