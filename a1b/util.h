@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stddef.h>
 #include "a1fs.h"
+#include "fs_ctx.h"
 
 #ifndef DEBUG
 #define DEBUG

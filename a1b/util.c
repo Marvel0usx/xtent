@@ -185,7 +185,7 @@ void init_directory_blk(void *image, a1fs_blk_t blk_num)
     a1fs_dentry *dir = (a1fs_dentry *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t idx = 0; idx < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); idx++)
     {
-        (dir + idx)->ino = NULL;
+        (dir + idx)->ino = (a1fs_ino_t) NULL;
     }
 }
 

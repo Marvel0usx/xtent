@@ -167,7 +167,7 @@ static int a1fs_getattr(const char *path, struct stat *st)
 		st->st_mode = this_file->mode;
 		st->st_nlink = this_file->links;
 		st->st_blocks = CEIL_DIV(this_file->size, 512);
-		st->st_mtime = (time_t) this_file->mtime.tv_sec.
+		st->st_mtime = (time_t) this_file->mtime.tv_sec;
 	}
 	return 0;
 }
