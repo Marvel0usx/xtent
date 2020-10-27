@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h>
 #include <stddef.h>
 #include "a1fs.h"
 
@@ -103,7 +104,7 @@ static bool is_used_bit(void *image, uint32_t bit, uint32_t lookup) {
 		} else {
 			bitmap = (unsigned char *) jump_to(image, s->s_data_bitmap + get_block_offset(bit), A1FS_BLOCK_SIZE);
 		}
-	} else if (lookup = LOOKUP_IB) {
+	} else if (lookup == LOOKUP_IB) {
 		if (s->s_num_free_inodes <= 0) return true;
 		if (bit >= s->s_num_inodes) {
 			fprintf(stderr, "Invalid lookup of inode bitmap at %d\n", bit);
@@ -152,7 +153,6 @@ static void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, 
 /** Find the first unused bit. Return -1 if no free block found. */
 static uint32_t find_first_free_blk_num(void *image, uint32_t lookup) {
 	a1fs_superblock *s = get_superblock(image);
-	unsigned char *bitmap;
 	if (lookup == LOOKUP_DB) {
 		if (s->s_num_free_blocks <= 0) {
 			return -1;
@@ -178,8 +178,8 @@ static uint32_t find_first_free_blk_num(void *image, uint32_t lookup) {
 }
 
 /** Initialize empty directory block. */
-static bool init_directory_blk(void *image, a1fs_blk_t blk_num) {
-	(a1fs_dentry *) dir = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+static void  init_directory_blk(void *image, a1fs_blk_t blk_num) {
+	a1fs_dentry *dir = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
 	for (uint32_t idx = 0; idx < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); idx++) {
 		(dir + idx)->ino = -1;
 	}
@@ -188,10 +188,11 @@ static bool init_directory_blk(void *image, a1fs_blk_t blk_num) {
 /** Find first unused directory entry in the block given its block number. 
  * return the offset of the directory, -1 for excess the max: 512.
 */
-static uint32_t *find_first_empty_direntry(void *image, a1fs_blk_t blk_num) {
-	(a1fs_dentry *) dir = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+static uint32_t find_first_empty_direntry(void *image, a1fs_blk_t blk_num) {
+	a1fs_superblock *s = get_superblock(image);
+	a1fs_dentry * dir = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
 	for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); offset++) {
-		if ((dir + offset)->ino == -1) {
+		if ((dir + offset)->ino >= s->s_num_inodes) {
 			return offset;
 		}
 	}
@@ -210,7 +211,7 @@ static uint32_t get_itable_offset(a1fs_ino_t inum) {
 static a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum) {
 	a1fs_superblock *s = get_superblock(image);
 	// check if the inumber is valid.
-	if (inum < 0 || inum >= s->s_num_inodes) {
+	if (inum >= s->s_num_inodes) {
 		fprintf(stderr, "Invalid inumber %d", inum);
 		return NULL;
 	}
