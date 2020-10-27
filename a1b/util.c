@@ -107,7 +107,7 @@ void _mask(unsigned char *bitmap, uint32_t bit)
 void mask(void *image, uint32_t bit, uint32_t lookup)
 {
     a1fs_superblock *s = get_superblock(image);
-    if (!is_used_bit(image, bit, lookup))
+    if (is_used_bit(image, bit, lookup))
     {
         fprintf(stderr, "Cannot mask used bit at %d.\n", bit);
         return;
