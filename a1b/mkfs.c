@@ -113,18 +113,18 @@ static bool a1fs_is_present(void *image)
 	} else if (IS_ZERO(s->s_num_inode_tables)) {
 		is_valid = false;
 	}
-	unsigned int num_data_bitmaps = (uint32_t) (s->s_num_blocks + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
+	unsigned int num_data_bitmaps = (uint32_t) CEIL_DIV(s->s_num_blocks, A1FS_BLOCK_SIZE);
 	if (num_data_bitmaps != s->s_num_data_bitmaps) {
 		is_valid = false;
 	}
-	unsigned int num_inode_tables = (uint32_t) (s->s_num_inodes * sizeof(a1fs_inode) + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
+	unsigned int num_inode_tables = (uint32_t) CEIL_DIV(s->s_num_inodes * sizeof(a1fs_inode), A1FS_BLOCK_SIZE);
 	if (num_inode_tables != s->s_num_inode_tables) {
 		is_valid = false;
 	}
 	if (s->s_num_blocks != s->size / A1FS_BLOCK_SIZE) {
 		is_valid = false;
 	}
-	unsigned int num_inode_bitmaps = (uint32_t) (s->s_num_inodes + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
+	unsigned int num_inode_bitmaps = (uint32_t) CEIL_DIV(s->s_num_inodes, A1FS_BLOCK_SIZE);
 	if (num_inode_bitmaps != s->s_num_inode_bitmaps) {
 		is_valid = false;
 	}
@@ -166,9 +166,9 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	s->size = size;
 	s->s_num_blocks = size / A1FS_BLOCK_SIZE;	// this is equivalent to floor of size / 4K
 	s->s_num_inodes = opts->n_inodes;
-	s->s_num_inode_tables = (opts->n_inodes * sizeof(a1fs_inode) + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
-	s->s_num_inode_bitmaps = (opts->n_inodes + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
-	s->s_num_data_bitmaps = (s->s_num_blocks + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
+	s->s_num_inode_tables = CEIL_DIV(opts->n_inodes * sizeof(a1fs_inode), A1FS_BLOCK_SIZE);
+	s->s_num_inode_bitmaps = CEIL_DIV(opts->n_inodes, A1FS_BLOCK_SIZE);
+	s->s_num_data_bitmaps = CEIL_DIV(s->s_num_blocks, A1FS_BLOCK_SIZE);
 	s->s_inode_bitmap = (a1fs_blk_t) 1;
 	s->s_data_bitmap = (a1fs_blk_t) (1 + s->s_num_inode_bitmaps);
 	s->s_inode_table = (a1fs_blk_t) (s->s_data_bitmap + s->s_num_data_bitmaps);

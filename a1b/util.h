@@ -29,6 +29,8 @@
 #define LOOKUP_IB 233
 #define LOOKUP_DB 666
 
+#define CEIL_DIV(a, b) (((a) / (b)) + (((a) % (b)) != 0))
+
 /** Check if x is a power of 2. */
 static inline bool is_powerof2(size_t x)
 {
