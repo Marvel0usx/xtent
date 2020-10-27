@@ -156,9 +156,9 @@ static bool a1fs_is_present(void *image)
  */
 static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 {
-	//TODO: initialize the superblock and create an empty root directory
-	//NOTE: the mode of the root directory inode should be set to S_IFDIR | 0777
-	a1fs_superblock *s = (a1fs_superblock *) image;
+	// initialize the superblock and create an empty root directory
+	// NOTE: the mode of the root directory inode should be set to S_IFDIR | 0777
+	a1fs_superblock *s = get_superblock(image);
 	s->magic = A1FS_MAGIC;
 	s->size = size;
 	s->s_num_blocks = size / A1FS_BLOCK_SIZE;	// this is equivalent to floor of size / 4K
@@ -166,7 +166,7 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	s->s_num_inode_tables = (opts->n_inodes * sizeof(a1fs_inode) + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 	s->s_num_inode_bitmaps = (opts->n_inodes + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
 	s->s_num_data_bitmaps = (s->s_num_blocks + A1FS_BLOCK_SIZE) / A1FS_BLOCK_SIZE;
-
+	s->s_inode_bitmap = (a1fs_blk_t) 1;
 	s->s_data_bitmap = (a1fs_blk_t) (1 + s->s_num_inode_bitmaps);
 	s->s_inode_table = (a1fs_blk_t) (s->s_data_bitmap + s->s_num_data_bitmaps);
 	s->s_first_block = (a1fs_blk_t) (s->s_inode_table + s->s_num_inode_tables);
@@ -174,26 +174,36 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	s->s_num_free_inodes = s->s_num_inodes - 1;
 	s->s_num_free_blocks = s->s_num_blocks - s->s_num_reserved_blocks;
 
+	// init inode bitmap
+	unsigned char *bitmap;
+	for (a1fs_blk_t offset = 0; offset < s->s_num_data_bitmaps; offset++) {
+		bitmap = (unsigned char *) jump_to(image, s->s_data_bitmap + offset, A1FS_BLOCK_SIZE);
+		reset_bitmap(bitmap);
+	}
+	// init data bitmap
+	for (a1fs_blk_t offset = 0; offset < s->s_num_inode_bitmaps; offset++) {
+		bitmap = (unsigned char *) jump_to(image, s->s_inode_bitmap + offset, A1FS_BLOCK_SIZE);
+		reset_bitmap(bitmap);
+	}	
+	// reserve blocks in data bitmap
+	mask_range(image, 0, s->s_num_reserved_blocks, LOOKUP_DB);
+
+	// initialize root inode at inumber 0
 	a1fs_inode *root = (a1fs_inode *) jump_to(image, s->s_inode_table, A1FS_BLOCK_SIZE);
 	root->mode = (mode_t) (S_IFDIR | 0777);
 	root->links = 2;
 	root->size = 0;
     clock_gettime(CLOCK_REALTIME, &(root->mtime));
-	unsigned char *bitmap;
-	// init inode bitmap
-	bitmap = get_first_inode_bitmap(image);
-	reset_bitmap(bitmap);
-	// safe to not check validity
-	mask(bitmap, 0);
-	// init data bitmap
-	bitmap = get_first_data_bitmap(image);
-	reset_bitmap(bitmap);
-	// reserve blocks
-	mask_range(bitmap, 0, s->s_num_reserved_blocks);
+	// mark the first bit for root inode as used
+	mask(image, 0, LOOKUP_IB);
+
 	// init root directory
 	a1fs_dentry root_dir;
+	// find the number of an unused data block
 	root->i_ptr_extent = (a1fs_blk_t) find_first_free_blk_num(image, LOOKUP_DB);
+	// format to empty directory
 	init_directory_blk(image, root->i_ptr_extent);
+	// mark the block as used
 	mask(image, root->i_ptr_extent, LOOKUP_DB);
 	return true;
 }

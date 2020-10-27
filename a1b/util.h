@@ -214,7 +214,9 @@ static a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum) {
 		fprintf(stderr, "Invalid inumber %d", inum);
 		return NULL;
 	}
-	a1fs_inode *itable = (a1fs_inode *) jump_to(image, s->s_inode_table + get_itable_block_offset(inum), A1FS_BLOCK_SIZE);
+	uint32_t itable_blk_offset = get_itable_block_offset(inum) + s->s_inode_table;
+	uint32_t itable_offset = get_itable_offset(inum);
 
-
+	a1fs_inode *itable = (a1fs_inode *) jump_to(image, itable_blk_offset, A1FS_BLOCK_SIZE);
+	return (itable + itable_offset);
 }
