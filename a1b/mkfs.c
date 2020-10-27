@@ -204,7 +204,8 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	// init root directory
 	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
 	root_dir->ino = 0;
-	strcpy_s(root_dir->name, A1FS_NAME_MAX, "/");
+	strncpy(root_dir->name, "/", A1FS_NAME_MAX);
+	root_dir->name[strlen("/")] = '\0';
 	// mark the block as used
 	mask(image, root->i_ptr_extent, LOOKUP_DB);
 	// mark the first bit for root inode as used
