@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "util.h"
 #include "fs_ctx.h"
@@ -185,7 +186,7 @@ void init_directory_blk(void *image, a1fs_blk_t blk_num)
     a1fs_dentry *dir = (a1fs_dentry *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t idx = 0; idx < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); idx++)
     {
-        (dir + idx)->ino = (a1fs_ino_t) NULL;
+        (dir + idx)->ino = -1;
     }
 }
 
@@ -224,7 +225,7 @@ a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum)
     if (inum >= s->s_num_inodes)
     {
         fprintf(stderr, "Invalid inumber %d", inum);
-        return NULL;
+        return -1;
     }
     uint32_t itable_blk_offset = get_itable_block_offset(inum) + s->s_inode_table;
     uint32_t itable_offset = get_itable_offset(inum);
@@ -235,10 +236,10 @@ a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum)
 
 /** Format the block to empty extents. */
 void init_extent_blk(void *image, a1fs_blk_t blk_num) {
-    (a1fs_extent *) extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+    a1fs_extent *extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_extent); offset++) {
-        // set the start of the extent to NULL, indicating unused
-        (extent_start + offset)->start = NULL;
+        // set the start of the extent to -1, indicating unused
+        (extent_start + offset)->start = -1;
     }
 }
 
@@ -246,10 +247,10 @@ void init_extent_blk(void *image, a1fs_blk_t blk_num) {
  * no empty extent found, return -1.
 */
 int find_first_empty_extent_offset(void *image, a1fs_blk_t blk_num) {
-    (a1fs_extent *) extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+    a1fs_extent *extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_extent); offset++) {
-        // unused if the start is NULL
-        if ((extent_start + offset)->start == NULL) {
+        // unused if the start is -1
+        if ((extent_start + offset)->start == -1) {
             return offset;
         }
     }
@@ -261,7 +262,7 @@ int find_first_empty_extent_offset(void *image, a1fs_blk_t blk_num) {
  */
 int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name) {
     a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
-    while (this_extent->start != NULL) {
+    while (this_extent->start != -1) {
         a1fs_dentry *this_dentry;
         for (a1fs_blk_t blk_offset = 0; blk_offset < this_extent->count; blk_offset++) {
             for (uint32_t dentry_offset = 0; dentry_offset < 512; dentry_offset++ ) {
