@@ -1,26 +1,3 @@
-statvfs caused some sort of crash, so it will be disabled.
-Traceback (most recent call last):
-  File "/h/u2/csc369h/fall/pub/a1b-testing/test.py", line 25, in run_test
-    test_function(submission, log)
-  File "/h/u2/csc369h/fall/pub/a1b-testing/tests.py", line 183, in test
-    s.run(fn, timeout=5)
-  File "/h/u2/csc369h/fall/pub/a1b-testing/submission.py", line 207, in run
-    return self._run(timeout, cwd, fn, *args, **kwargs)
-  File "/h/u2/csc369h/fall/pub/a1b-testing/submission.py", line 148, in _run
-    raise exception_chain(fn_exc, a1fs_exc, timeout_exc)
-  File "/h/u2/csc369h/fall/pub/a1b-testing/submission.py", line 136, in _run
-    return future.result(timeout)
-  File "/local/packages/python-3.8/lib/python3.8/concurrent/futures/_base.py", line 432, in result
-    return self.__get_result()
-  File "/local/packages/python-3.8/lib/python3.8/concurrent/futures/_base.py", line 388, in __get_result
-    raise self._exception
-  File "/local/packages/python-3.8/lib/python3.8/concurrent/futures/thread.py", line 57, in run
-    result = self.fn(*self.args, **self.kwargs)
-  File "/h/u2/csc369h/fall/pub/a1b-testing/tests.py", line 175, in fn
-    raise e
-  File "/h/u2/csc369h/fall/pub/a1b-testing/tests.py", line 170, in fn
-    log_system_stats("Try statvfs", s, log)
-  File "/h/u2/csc369h/fall/pub/a1b-testing/tests.py", line 68, in log_system_stats
-    stats = os.statvfs(".")
-OSError: [Errno 38] Function not implemented: '.'
-
+Try statvfs:    os.statvfs_result(f_bsize=4096, f_frsize=4096, f_blocks=16, f_bfree=11, 
+                f_bavail=11, f_files=4, f_ffree=3, f_favail=3, f_flag=4102, f_namemax=252)
+Elapsed time: 0.42402585898526013 seconds

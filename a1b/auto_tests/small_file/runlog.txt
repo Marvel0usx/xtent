@@ -1,4 +1,5 @@
-Intial State:   STATVFS disabled!
+Intial State:   os.statvfs_result(f_bsize=4096, f_frsize=4096, f_blocks=16, f_bfree=11, 
+                f_bavail=11, f_files=16, f_ffree=15, f_favail=15, f_flag=4102, f_namemax=252)
 Traceback (most recent call last):
   File "/h/u2/csc369h/fall/pub/a1b-testing/test.py", line 25, in run_test
     test_function(submission, log)
@@ -10,7 +11,7 @@ Traceback (most recent call last):
     raise exception_chain(fn_exc, a1fs_exc, timeout_exc)
   File "/h/u2/csc369h/fall/pub/a1b-testing/submission.py", line 136, in _run
     return future.result(timeout)
-  File "/local/packages/python-3.8/lib/python3.8/concurrent/futures/_base.py", line 432, in result
+  File "/local/packages/python-3.8/lib/python3.8/concurrent/futures/_base.py", line 439, in result
     return self.__get_result()
   File "/local/packages/python-3.8/lib/python3.8/concurrent/futures/_base.py", line 388, in __get_result
     raise self._exception
