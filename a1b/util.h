@@ -50,49 +50,49 @@ static inline size_t align_up(size_t x, size_t alignment)
 }
 
 /** Get address of block at the given block number. */
-static void *jump_to(void *image, uint32_t idx, size_t unit) {
+void *jump_to(void *image, uint32_t idx, size_t unit) {
 	return image + idx * unit;
 }
 
 /** Set all bit to 0 in the given bitmap. */
-static void reset_bitmap(unsigned char* bitmap) {
+void reset_bitmap(unsigned char* bitmap) {
 	memset(bitmap, 0, A1FS_BLOCK_SIZE);
 }
 
 /** Get the superblock. */
-static a1fs_superblock* get_superblock(void *image) {
+a1fs_superblock* get_superblock(void *image) {
 	return (a1fs_superblock *) image;
 }
 
 /** Get the first inode bitmap. */
-static unsigned char *get_first_inode_bitmap(void *image) {
+unsigned char *get_first_inode_bitmap(void *image) {
 	a1fs_superblock *s = (a1fs_superblock *) image;
 	return (unsigned char *) jump_to(image, s->s_inode_bitmap, A1FS_BLOCK_SIZE);
 }
 
 /** Get the first data bitmap. */
-static unsigned char *get_first_data_bitmap(void *image) {
+unsigned char *get_first_data_bitmap(void *image) {
 	a1fs_superblock *s = (a1fs_superblock *) image;
 	return (unsigned char *) jump_to(image, s->s_data_bitmap, A1FS_BLOCK_SIZE);
 }
 
 // locate which bitmap stores this bit
-static a1fs_blk_t get_block_offset(uint32_t bit) {
+a1fs_blk_t get_block_offset(uint32_t bit) {
 	return (a1fs_blk_t) bit / A1FS_BLOCK_SIZE;
 }
 
 // locate which byte stores this bit
-static uint32_t get_byte_offset(uint32_t bit) {
+uint32_t get_byte_offset(uint32_t bit) {
 	return (bit - ((bit / A1FS_BLOCK_SIZE) * A1FS_BLOCK_SIZE)) / sizeof(char);
 }
 
 // locate the bit in byte
-static uint32_t get_bit_offset(uint32_t bit) {
+uint32_t get_bit_offset(uint32_t bit) {
 	return bit % sizeof(char);
 }
 
 /** Check if the bit is used. */
-static bool is_used_bit(void *image, uint32_t bit, uint32_t lookup) {
+bool is_used_bit(void *image, uint32_t bit, uint32_t lookup) {
 	a1fs_superblock *s = get_superblock(image);
 	// choose which bitmap
 	unsigned char *bitmap;
@@ -124,7 +124,7 @@ static void _mask(unsigned char *bitmap, uint32_t bit) {
 }
 
 /** Set the bit to 1 in the bitmap indicated by lookup. */
-static void mask(void *image, uint32_t bit, uint32_t lookup) {
+void mask(void *image, uint32_t bit, uint32_t lookup) {
 	a1fs_superblock *s = get_superblock(image);
 	if (!is_used_bit(image, bit, lookup)) {
 		fprintf(stderr, "Cannot mask used bit at %d.\n", bit);
@@ -144,14 +144,14 @@ static void mask(void *image, uint32_t bit, uint32_t lookup) {
 }
 
 /** Mask from start to end (exclusive) in bitmap. */
-static void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup) {
+void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup) {
 	for (uint32_t offset = offset_start; offset < offset_end; offset++) {
 		mask(image, offset, lookup);
 	}
 }
 
 /** Find the first unused bit. Return -1 if no free block found. */
-static uint32_t find_first_free_blk_num(void *image, uint32_t lookup) {
+uint32_t find_first_free_blk_num(void *image, uint32_t lookup) {
 	a1fs_superblock *s = get_superblock(image);
 	if (lookup == LOOKUP_DB) {
 		if (s->s_num_free_blocks <= 0) {
@@ -178,7 +178,7 @@ static uint32_t find_first_free_blk_num(void *image, uint32_t lookup) {
 }
 
 /** Initialize empty directory block. */
-static void  init_directory_blk(void *image, a1fs_blk_t blk_num) {
+void init_directory_blk(void *image, a1fs_blk_t blk_num) {
 	a1fs_dentry *dir = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
 	for (uint32_t idx = 0; idx < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); idx++) {
 		(dir + idx)->ino = -1;
@@ -188,7 +188,7 @@ static void  init_directory_blk(void *image, a1fs_blk_t blk_num) {
 /** Find first unused directory entry in the block given its block number. 
  * return the offset of the directory, -1 for excess the max: 512.
 */
-static uint32_t find_first_empty_direntry(void *image, a1fs_blk_t blk_num) {
+uint32_t find_first_empty_direntry(void *image, a1fs_blk_t blk_num) {
 	a1fs_superblock *s = get_superblock(image);
 	a1fs_dentry * dir = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
 	for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); offset++) {
@@ -199,16 +199,16 @@ static uint32_t find_first_empty_direntry(void *image, a1fs_blk_t blk_num) {
 	return -1;
 }
 
-static uint32_t get_itable_block_offset(a1fs_ino_t inum) {
+uint32_t get_itable_block_offset(a1fs_ino_t inum) {
 	return inum / (A1FS_BLOCK_SIZE / sizeof(a1fs_inode));
 }
 
-static uint32_t get_itable_offset(a1fs_ino_t inum) {
+uint32_t get_itable_offset(a1fs_ino_t inum) {
 	return inum % (A1FS_BLOCK_SIZE / sizeof(a1fs_inode));
 }
 
 /** Get inode by inum. */
-static a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum) {
+a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum) {
 	a1fs_superblock *s = get_superblock(image);
 	// check if the inumber is valid.
 	if (inum >= s->s_num_inodes) {
