@@ -94,7 +94,7 @@ bool is_used_bit(void *image, uint32_t bit, uint32_t lookup)
     {
         perror("Invalid lookup flag.\n");
     }
-    return (bitmap[get_byte_offset(bit)] & (1 << get_bit_offset(bit))) == 0;
+    return (bitmap[get_byte_offset(bit)] & (1 << get_bit_offset(bit))) != 0;
 }
 
 void _mask(unsigned char *bitmap, uint32_t bit)
