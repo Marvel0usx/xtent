@@ -24,6 +24,10 @@
 #include <stddef.h>
 #include "a1fs.h"
 
+#ifndef DEBUG
+#define DEBUG
+#endif
+
 #define IS_ZERO(x) ((x) == 0)
 #define NOT_ZERO(x) ((x) != 0)
 #define LOOKUP_IB 233
@@ -104,16 +108,20 @@ uint32_t get_itable_offset(a1fs_ino_t inum);
 /** Get inode by inum. */
 a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum);
 
+#ifdef DEBUG
+
+#include <stdio.h>
 /** Print bitmap of A1FS_BLOCK_SIZE. */
-static inline void print_bitmap(unsigned char *block_start, size_t size) {
-	for (int num = 0; num < size / 8; num++) {
+static inline void print_bitmap(unsigned char *block_start, uint32_t size) {
+	for (uint32_t num = 0; num < size / 8; num++) {
 		unsigned char block = *(block_start + num);
-		for (int idx = 0; idx <= 7; idx++) {
+		for (uint32_t idx = 0; idx <= 7; idx++) {
 			// printf("%d", block & (1 << idx));
-			unsigned char bit = (block & (1 << idx)) ? 1 ; 0;
+			unsigned char bit = (block & (1 << idx)) != 0;
 			printf("%d", bit);
 		}
 		printf(" ");
 	}
 	printf("\n");
 }
+#endif

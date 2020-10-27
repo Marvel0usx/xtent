@@ -106,7 +106,7 @@ static fs_ctx *get_fs(void)
 static int a1fs_statfs(const char *path, struct statvfs *st)
 {
 	fs_ctx *fs = get_fs();
-
+	(void) path;
 	memset(st, 0, sizeof(*st));
 	st->f_bsize   = A1FS_BLOCK_SIZE;
 	st->f_frsize  = A1FS_BLOCK_SIZE;
@@ -116,17 +116,17 @@ static int a1fs_statfs(const char *path, struct statvfs *st)
 	// total number of blocks
 	st->f_blocks = fs->s->s_num_blocks;
 	// number of free blocks
-	st->bfree = fs->s->s_num_free_blocks;
-	st->bavail = st->bfree;
+	st->f_bfree = fs->s->s_num_free_blocks;
+	st->f_bavail = st->f_bfree;
 	// total number of inodes
-	st->files = fs->s->s_num_inodes;
+	st->f_files = fs->s->s_num_inodes;
 	// number of free inodes
-	st->ffree = fs->s->s_num_free_inodes;
-	st->favail = st->ffree;
+	st->f_ffree = fs->s->s_num_free_inodes;
+	st->f_favail = st->f_ffree;
 	// maximun filename length
 	st->f_namemax = A1FS_NAME_MAX;
 
-	return 0
+	return 0;
 }
 
 /**
