@@ -163,6 +163,7 @@ static int a1fs_getattr(const char *path, struct stat *st)
 		return err;
 	} else {
 		a1fs_inode *this_file = get_inode_by_inumber(fs->image, err);
+		if (this_file == NULL) perror("Invalid inode!");
 		st->st_ino = err;
 		st->st_mode = this_file->mode;
 		st->st_nlink = this_file->links;
