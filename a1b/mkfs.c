@@ -139,7 +139,7 @@ static bool a1fs_is_present(void *image)
 		is_valid = false;
 	}
 	a1fs_extent *root_extent = (a1fs_extent *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
-	if (root_extent->start == NULL) {
+	if (root_extent->start == (a1fs_blk_t) -1) {
 		is_valid = false;
 	}
 	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root_extent->start, A1FS_BLOCK_SIZE);
