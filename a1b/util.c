@@ -47,13 +47,13 @@ a1fs_blk_t get_block_offset(uint32_t bit)
 // locate which byte stores this bit
 uint32_t get_byte_offset(uint32_t bit)
 {
-    return (bit - ((bit / A1FS_BLOCK_SIZE) * A1FS_BLOCK_SIZE)) / sizeof(char);
+    return (bit - ((bit / A1FS_BLOCK_SIZE) * A1FS_BLOCK_SIZE)) / 8;
 }
 
 // locate the bit in byte
 uint32_t get_bit_offset(uint32_t bit)
 {
-    return bit % sizeof(char);
+    return bit % 8;
 }
 
 /** Check if the bit is used. */
