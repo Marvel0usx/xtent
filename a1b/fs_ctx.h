@@ -21,6 +21,7 @@
 #include <stddef.h>
 
 #include "options.h"
+#include "a1fs.h"
 
 
 /**
@@ -34,7 +35,11 @@ typedef struct fs_ctx {
 
 	//TODO: useful runtime state of the mounted file system should be cached
 	// here (NOT in global variables in a1fs.c)
+	// this is the superblock
+	a1fs_superblock *s;
 
+	// root inumber
+	a1fs_ino_t root_inum;
 } fs_ctx;
 
 /**

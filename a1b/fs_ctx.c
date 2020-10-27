@@ -26,6 +26,12 @@ bool fs_ctx_init(fs_ctx *fs, void *image, size_t size)
 
 	//TODO: check if the file system image can be mounted and initialize its
 	// runtime state
+	// record the place of the superblock
+	fs->s = (a1fs_superblock *) image;
+
+	// record the inumber of root node
+	fs->root_inum = 0;
+
 	return true;
 }
 

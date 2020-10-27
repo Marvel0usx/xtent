@@ -97,7 +97,7 @@ static bool parse_args(int argc, char *argv[], mkfs_opts *opts)
 /** Determine if the image has already been formatted into a1fs. */
 static bool a1fs_is_present(void *image)
 {
-	//TODO: check if the image already contains a valid a1fs superblock
+	// check if the image already contains a valid a1fs superblock
 	a1fs_superblock *s = (a1fs_superblock *) image;
 	int is_valid = true;
 	if (s->magic != A1FS_MAGIC) {
