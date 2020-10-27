@@ -1,4 +1,7 @@
 #include "util.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef HELPERS_INCLUDED
 #define HELPERS_INCLUDED
