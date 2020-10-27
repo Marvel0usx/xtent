@@ -175,7 +175,7 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	s->s_first_block = (a1fs_blk_t) (s->s_inode_table + s->s_num_inode_tables);
 	s->s_num_reserved_blocks = 1 + s->s_num_inode_bitmaps + s->s_num_data_bitmaps + s->s_num_inode_tables;
 	s->s_num_free_inodes = s->s_num_inodes;
-	s->s_num_free_blocks = s->s_num_blocks - s->s_num_reserved_blocks;
+	s->s_num_free_blocks = s->s_num_blocks;
 
 	// init inode bitmap
 	unsigned char *bitmap;
