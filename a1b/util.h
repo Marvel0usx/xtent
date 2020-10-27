@@ -127,7 +127,7 @@ int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name);
  *   - The path is not an absolute path
  *   - An element on the path cannot be found
  */
-int path_lookup(char *path, fs_ctx *fs);
+int path_lookup(const char *path, fs_ctx *fs);
 
 #ifdef DEBUG
 

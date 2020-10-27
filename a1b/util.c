@@ -306,7 +306,7 @@ static int path_lookup_helper(char *path, a1fs_ino_t inumber, fs_ctx *fs) {
  *   - The path is not an absolute path
  *   - An element on the path cannot be found
  */
-int path_lookup(char *path, fs_ctx *fs) {
+int path_lookup(const char *path, fs_ctx *fs) {
     // check if the path is an absolute path
     if(path[0] != '/') {
         fprintf(stderr, "Not an absolute path\n");
