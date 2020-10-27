@@ -138,7 +138,10 @@ static bool a1fs_is_present(void *image)
 	if (root->mode != (S_IFDIR | 0777)) {
 		is_valid = false;
 	}
-
+	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
+	if (root_dir->ino != 0 || strcmp(root_dir->name, "/") != 0) {
+		is_valid = false;
+	}
 	return is_valid;
 }
 
@@ -194,17 +197,18 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	root->links = 2;
 	root->size = 0;
     clock_gettime(CLOCK_REALTIME, &(root->mtime));
-	// mark the first bit for root inode as used
-	mask(image, 0, LOOKUP_IB);
-
-	// init root directory
-	a1fs_dentry root_dir;
 	// find the number of an unused data block
 	root->i_ptr_extent = (a1fs_blk_t) find_first_free_blk_num(image, LOOKUP_DB);
 	// format to empty directory
 	init_directory_blk(image, root->i_ptr_extent);
+	// init root directory
+	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
+	root_dir->ino = 0;
+	strcpy_s(root_dir->name, A1FS_NAME_MAX, "/");
 	// mark the block as used
 	mask(image, root->i_ptr_extent, LOOKUP_DB);
+	// mark the first bit for root inode as used
+	mask(image, 0, LOOKUP_IB);
 	return true;
 }
 
