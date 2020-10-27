@@ -1,7 +1,10 @@
-#include "util.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
+#include "util.h"
+#include "fs_ctx.h"
 
 #ifndef HELPERS_INCLUDED
 #define HELPERS_INCLUDED
@@ -138,7 +141,7 @@ void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_
 }
 
 /** Find the first unused bit. Return -1 if no free block found. */
-uint32_t find_first_free_blk_num(void *image, uint32_t lookup)
+int find_first_free_blk_num(void *image, uint32_t lookup)
 {
     a1fs_superblock *s = get_superblock(image);
     if (lookup == LOOKUP_DB)
@@ -182,14 +185,14 @@ void init_directory_blk(void *image, a1fs_blk_t blk_num)
     a1fs_dentry *dir = (a1fs_dentry *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t idx = 0; idx < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); idx++)
     {
-        (dir + idx)->ino = -1;
+        (dir + idx)->ino = NULL;
     }
 }
 
 /** Find first unused directory entry in the block given its block number. 
  * return the offset of the directory, -1 for excess the max: 512.
 */
-uint32_t find_first_empty_direntry(void *image, a1fs_blk_t blk_num)
+int find_first_empty_direntry_offset(void *image, a1fs_blk_t blk_num)
 {
     a1fs_superblock *s = get_superblock(image);
     a1fs_dentry *dir = (a1fs_dentry *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
@@ -228,6 +231,100 @@ a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum)
 
     a1fs_inode *itable = (a1fs_inode *)jump_to(image, itable_blk_offset, A1FS_BLOCK_SIZE);
     return (itable + itable_offset);
+}
+
+/** Format the block to empty extents. */
+void init_extent_blk(void *image, a1fs_blk_t blk_num) {
+    (a1fs_extent *) extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+    for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_extent); offset++) {
+        // set the start of the extent to NULL, indicating unused
+        (extent_start + offset)->start = NULL;
+    }
+}
+
+/* Find the first empty extent. Return the offset to the extent that is not used. If 
+ * no empty extent found, return -1.
+*/
+int find_first_empty_extent_offset(void *image, a1fs_blk_t blk_num) {
+    (a1fs_extent *) extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+    for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_extent); offset++) {
+        // unused if the start is NULL
+        if ((extent_start + offset)->start == NULL) {
+            return offset;
+        }
+    }
+    return -1;
+}
+
+/** Find the inumber of the file given its name, starting from dir. 
+ * Return -1 if not found.
+ */
+int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name) {
+    a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    while (this_extent->start != NULL) {
+        a1fs_dentry *this_dentry;
+        for (a1fs_blk_t blk_offset = 0; blk_offset < this_extent->count; blk_offset++) {
+            for (uint32_t dentry_offset = 0; dentry_offset < 512; dentry_offset++ ) {
+                uint32_t blk_num = this_extent->start + blk_offset;
+                this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+                this_dentry += dentry_offset;
+                if (strcmp(name, this_dentry->name) == 0) {
+                    return this_dentry->ino;
+                }
+            }
+        }
+        this_extent++;
+    }
+    return -1;
+}
+
+/** Recursion helper for path traversal. */
+static int path_lookup_helper(char *path, a1fs_ino_t inumber, fs_ctx *fs) {
+    if (path == NULL) {
+        return inumber;     // Reaches to the end.
+    }
+    a1fs_inode *this_inode = get_inode_by_inumber(fs->image, inumber);
+    if (S_ISREG(this_inode->mode) != 0) {
+        // Bad path: a component is not a directory
+        return -ENOTDIR;
+    } else {
+        char *filename = strsep(&path, "/");
+        int err = find_file_ino_in_dir(fs->image, this_inode, filename);
+        // file is not in directory
+        if (err == -1) {
+            return -ENOENT;
+        } else {
+            return path_lookup_helper(path, err, fs);
+        }
+    }
+}
+
+
+/* Returns the inode number for the element at the end of the path
+ * if it exists.  If there is any error, return -1.
+ * Possible errors include:
+ *   - The path is not an absolute path
+ *   - An element on the path cannot be found
+ */
+int path_lookup(char *path, fs_ctx *fs) {
+    // check if the path is an absolute path
+    if(path[0] != '/') {
+        fprintf(stderr, "Not an absolute path\n");
+        // the starting point is not in the root-dir anyhow
+        return -ENOENT;
+    }
+    char *path_copy, *path_original;
+    path_copy = path_original = strdup(path);
+    strsep(&path_copy, "/");
+    int err;
+    if (strcmp(path_copy, "") == 0) {
+        // path is the root dir
+        err = 0;
+    } else {
+        err = path_lookup_helper(path_copy, 0, fs);
+    }
+    free(path_original);
+    return err;
 }
 
 #endif

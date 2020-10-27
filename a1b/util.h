@@ -91,15 +91,15 @@ void mask(void *image, uint32_t bit, uint32_t lookup);
 void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup);
 
 /** Find the first unused bit. Return -1 if no free block found. */
-uint32_t find_first_free_blk_num(void *image, uint32_t lookup);
+int find_first_free_blk_num(void *image, uint32_t lookup);
 
 /** Initialize empty directory block. */
 void init_directory_blk(void *image, a1fs_blk_t blk_num);
 
 /** Find first unused directory entry in the block given its block number. 
  * return the offset of the directory, -1 for excess the max: 512.
-*/
-uint32_t find_first_empty_direntry(void *image, a1fs_blk_t blk_num);
+ */
+int find_first_empty_direntry_offset(void *image, a1fs_blk_t blk_num);
 
 uint32_t get_itable_block_offset(a1fs_ino_t inum);
 
@@ -107,6 +107,27 @@ uint32_t get_itable_offset(a1fs_ino_t inum);
 
 /** Get inode by inum. */
 a1fs_inode *get_inode_by_inumber(void *image, a1fs_ino_t inum);
+
+/** Format the block to empty extents. */
+void init_extent_blk(void *image, a1fs_blk_t blk_num);
+
+/* Find the first empty extent. Return the offset to the extent that is not used. If 
+ * no empty extent found, return -1.
+*/
+int find_first_empty_extent_offset(void *image, a1fs_blk_t blk_num);
+
+/** Find the inumber of the file given its name, starting from dir. 
+ * Return -1 if not found.
+ */
+int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name);
+
+/* Returns the inode number for the element at the end of the path
+ * if it exists.  If there is any error, return -1.
+ * Possible errors include:
+ *   - The path is not an absolute path
+ *   - An element on the path cannot be found
+ */
+int path_lookup(char *path, fs_ctx *fs);
 
 #ifdef DEBUG
 
@@ -125,3 +146,4 @@ static inline void print_bitmap(unsigned char *block_start, uint32_t size) {
 	printf("\n");
 }
 #endif
+

@@ -30,6 +30,7 @@
 #include "fs_ctx.h"
 #include "options.h"
 #include "map.h"
+#include "util.h"
 
 //NOTE: All path arguments are absolute paths within the a1fs file system and
 // start with a '/' that corresponds to the a1fs root directory.
@@ -155,23 +156,20 @@ static int a1fs_getattr(const char *path, struct stat *st)
 
 	memset(st, 0, sizeof(*st));
 
-	//NOTE: This is just a placeholder that allows the file system to be mounted
-	// without errors. You should remove this from your implementation.
-	if (strcmp(path, "/") == 0) {
-		//NOTE: all the fields set below are required and must be set according
-		// to the information stored in the corresponding inode
-		st->st_mode = S_IFDIR | 0777;
-		st->st_nlink = 2;
-		st->st_size = 0;
-		st->st_blocks = 0 * A1FS_BLOCK_SIZE / 512;
-		st->st_mtim = (struct timespec){0};
-		return 0;
-	}
-
-	//TODO: lookup the inode for given path and, if it exists, fill in the
+	// lookup the inode for given path and, if it exists, fill in the
 	// required fields based on the information stored in the inode
-	(void)fs;
-	return -ENOSYS;
+	int err = path_lookup(path, fs);
+	if (err <= 0) {
+		return err;
+	} else {
+		a1fs_inode *this_file = get_inode_by_inumber(fs->image, err);
+		st->st_ino = err;
+		st->st_mode = this_file->mode;
+		st->st_nlink = this_file->links;
+		st->st_blocks = CEIL_DIV(this_file->size, 512);
+		st->st_mtime = this_file->mtime;
+	}
+	return 0;
 }
 
 /**

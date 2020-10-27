@@ -138,7 +138,11 @@ static bool a1fs_is_present(void *image)
 	if (root->mode != (S_IFDIR | 0777)) {
 		is_valid = false;
 	}
-	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
+	a1fs_extent *root_extent = (a1fs_extent *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
+	if (root_extent->start == NULL) {
+		is_valid = false;
+	}
+	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root_extent->start, A1FS_BLOCK_SIZE);
 	if (root_dir->ino != 0 || strcmp(root_dir->name, "/") != 0) {
 		is_valid = false;
 	}
@@ -197,17 +201,25 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	root->links = 2;
 	root->size = 0;
     clock_gettime(CLOCK_REALTIME, &(root->mtime));
-	// find the number of an unused data block
+	// find the number of an unused data block to store extents
 	root->i_ptr_extent = (a1fs_blk_t) find_first_free_blk_num(image, LOOKUP_DB);
+	// format the block to extents
+	init_extent_blk(image, root->i_ptr_extent);
+	mask(image, root->i_ptr_extent, LOOKUP_DB);
+	// find an extent and a free block for directories
+	int extent_offset = find_first_empty_extent_offset(image, root->i_ptr_extent);
+	a1fs_extent * this_extent = (a1fs_extent *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
+	this_extent += extent_offset;
+	this_extent->start = find_first_free_blk_num(image, LOOKUP_DB);
+	this_extent->count = 1;
 	// format to empty directory
-	init_directory_blk(image, root->i_ptr_extent);
+	init_directory_blk(image, this_extent->start);
+	mask(image, this_extent->start, LOOKUP_DB);
 	// init root directory
-	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
+	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, this_extent->start, A1FS_BLOCK_SIZE);
 	root_dir->ino = 0;
 	strncpy(root_dir->name, "/", A1FS_NAME_MAX);
 	root_dir->name[strlen("/")] = '\0';
-	// mark the block as used
-	mask(image, root->i_ptr_extent, LOOKUP_DB);
 	// mark the first bit for root inode as used
 	mask(image, 0, LOOKUP_IB);
 	return true;
