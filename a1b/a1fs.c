@@ -159,7 +159,7 @@ static int a1fs_getattr(const char *path, struct stat *st)
 	// lookup the inode for given path and, if it exists, fill in the
 	// required fields based on the information stored in the inode
 	int err = path_lookup(path, fs);
-	if (err <= 0) {
+	if (err < 0) {
 		return err;
 	} else {
 		a1fs_inode *this_file = get_inode_by_inumber(fs->image, err);

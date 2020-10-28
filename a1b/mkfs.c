@@ -200,6 +200,7 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	root->mode = (mode_t) (S_IFDIR | 0777);
 	root->links = 2;
 	root->size = 0;
+	root->i_extents = 1;
     clock_gettime(CLOCK_REALTIME, &(root->mtime));
 	// find the number of an unused data block to store extents
 	root->i_ptr_extent = (a1fs_blk_t) find_first_free_blk_num(image, LOOKUP_DB);
