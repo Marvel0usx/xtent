@@ -252,7 +252,22 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 	mode = mode | S_IFDIR;
 	fs_ctx *fs = get_fs();
 
-	//TODO: create a directory at given path with given mode
+	// create a directory at given path with given mode
+	size_t len = strlen(path);
+	char * path_copy, parent_path = strdup(path);
+	// remove trailing /
+	if (strchr(path, len - 1) == '/') {
+		path_copy[len - 1] = '\0';
+		parent_path[len - 1] = '\0';
+	}
+	// find the last occurance of /, and hence the new dir
+	char *dirname = strrchr(path_copy, '/') + 1;
+	parent_path[strlen(path_search) - strlen(dirname) - 1] = '\0';
+	// get the inode of parent dir
+	a1fs_ino_t inum = path_lookup(parent_path, fs);
+	a1fs_inode *parent_ino = get_inode_by_inumber(fs->image, inum);
+	// find empty directory entry
+	
 	(void)path;
 	(void)mode;
 	(void)fs;
