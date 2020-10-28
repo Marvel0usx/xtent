@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <time.h>
 
 // Using 2.9.x FUSE API
 #define FUSE_USE_VERSION 29
@@ -254,7 +255,7 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 
 	// create a directory at given path with given mode
 	size_t len = strlen(path);
-	char * path_copy, parent_path = strdup(path);
+	char *path_copy, *parent_path = strdup(path);
 	// remove trailing /
 	if (strchr(path, len - 1) == '/') {
 		path_copy[len - 1] = '\0';
@@ -263,15 +264,34 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 	// find the last occurance of /, and hence the new dir
 	char *dirname = strrchr(path_copy, '/') + 1;
 	parent_path[strlen(path_search) - strlen(dirname) - 1] = '\0';
-	// get the inode of parent dir
+	// get the inum of parent dir
 	a1fs_ino_t inum = path_lookup(parent_path, fs);
-	a1fs_inode *parent_ino = get_inode_by_inumber(fs->image, inum);
+	a1fs_inode *parent_inode = get_inode_by_inumber(image, inum);
 	// find empty directory entry
-	
-	(void)path;
-	(void)mode;
-	(void)fs;
-	return -ENOSYS;
+	a1fs_dentry *new_dentry = find_first_free_dentry(image, inum);
+	if (new_dentry == NULL) {
+		if (parent_inode->i_extents < 512) {
+			// TODO: create new extent block. 
+		} else {
+			// try to extend
+		}
+		// if fail
+		return -ENOSPC;
+	} else {
+		new_dentry->ino = find_first_free_blk_num(image, LOOKUP_IB);
+		mask(image, new_dentry->ino, LOOKUP_IB);
+		strncpy(new_dentry->name, path, A1FS_NAME_MAX);
+		new_dentry->name[strlen(path)] = '\0';
+		a1fs_inode *new_inode = get_inode_by_inumber(image, new_dentry->ino);
+		new_inode->mode = mode;
+		new_inode->links = 1;
+		new_inode->size = 0;
+		clock_gettime(CLOCK_REALTIME, &(new_inode->mtime));
+		new_inode->i_extents = 1;
+		new_inode->i_ptr_extent = find_first_free_blk_num(image, LOOKUP_DB);
+		mask(image, new_inode->i_ptr_extent, LOOKUP_DB);
+	}
+	return 0;
 }
 
 /**

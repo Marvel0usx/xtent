@@ -303,6 +303,26 @@ static int path_lookup_helper(char *path, a1fs_ino_t inumber, fs_ctx *fs) {
     }
 }
 
+/** Find first usable directory entry. Return NULL if no empty dentry => either abort or extend
+ * existing extent.
+*/
+a1fs_dentry *find_first_free_dentry(void *image, a1fs_ino_t inum) {
+    a1fs_inode *ino = get_inode_by_inumber(image, inum);
+    a1fs_extent *start_extent = (a1fs_extent *) jump_to(image, ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    for (a1fs_extent *this_extent = start_extent; this_extent - start_extent < 512; this_extent++) {
+        if (this_extent->start == (a1fs_blk_t) -1) continue;
+        for (a1fs_blk_t blk_offset = 0; blk_offset < this_extent->count; blk_offset++) {
+            int dentry_offset = find_first_empty_direntry_offset(image, this_extent->start + blk_offset);
+            // no available dentry in this block
+            if (dentry_offset == -1) continue;
+            // else
+            a1fs_dentry *res = (a1fs_dentry *) jump_to(image, this_extent->start + blk_offset, A1FS_BLOCK_SIZE);
+            return res + dentry_offset;
+        }
+    }
+    return NULL;
+}
+
 
 /* Returns the inode number for the element at the end of the path
  * if it exists.  If there is any error, return -1.

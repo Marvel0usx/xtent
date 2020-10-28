@@ -130,6 +130,11 @@ int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name);
  */
 int path_lookup(const char *path, fs_ctx *fs);
 
+/** Find first usable directory entry. Return NULL if no empty dentry => either abort or extend
+ * existing extent.
+*/
+a1fs_dentry *find_first_free_dentry(void *image, a1fs_ino_t inum);
+
 #ifdef DEBUG
 
 #include <stdio.h>
