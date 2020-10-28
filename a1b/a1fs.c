@@ -164,7 +164,6 @@ static int a1fs_getattr(const char *path, struct stat *st)
 	} else {
 		a1fs_inode *this_file = get_inode_by_inumber(fs->image, err);
 		if (this_file == NULL) perror("Invalid inode!");
-		st->st_ino = err;
 		st->st_mode = this_file->mode;
 		st->st_nlink = this_file->links;
 		st->st_blocks = CEIL_DIV(this_file->size, 512);
@@ -207,18 +206,22 @@ static int a1fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	// directory entries
 	int err = path_lookup(path, fs);
 	a1fs_inode *dir_ino = get_inode_by_inumber(fs->image, (a1fs_ino_t) err);
-	a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+	a1fs_extent *this_extent = (a1fs_extent *) jump_to(fs->image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
     for (a1fs_blk_t extent_offset = 0; extent_offset < 512; extent_offset++) {
         if ((this_extent + extent_offset)->start == (a1fs_blk_t) -1) continue;
+		if ((this_extent + extent_offset)->start >= fs->s->s_num_blocks) continue;
         a1fs_dentry *this_dentry;
         for (a1fs_blk_t blk_offset = 0; blk_offset < (this_extent + extent_offset)->count; blk_offset++) {
             uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
-            this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+            this_dentry = (a1fs_dentry *) jump_to(fs->image, blk_num, A1FS_BLOCK_SIZE);
             for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
-                err = filler(buf, (this_dentry + dentry_offset)->name, NULL, 0);
-				if (err != 0) {
-					return -ENOMEM;
-				} 
+				a1fs_ino_t inum = (this_dentry + dentry_offset)->ino;
+				if (inum != (a1fs_ino_t) -1 && inum < fs->s->s_num_inodes) {
+     	            err = filler(buf, (this_dentry + dentry_offset)->name, NULL, 0);
+					if (err != 0) {
+						return -ENOMEM;
+					} 
+				}
             }
         }
     }

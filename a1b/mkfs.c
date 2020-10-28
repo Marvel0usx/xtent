@@ -142,10 +142,6 @@ static bool a1fs_is_present(void *image)
 	if (root_extent->start == (a1fs_blk_t) -1) {
 		is_valid = false;
 	}
-	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, root_extent->start, A1FS_BLOCK_SIZE);
-	if (root_dir->ino != 0 || strcmp(root_dir->name, "/") != 0) {
-		is_valid = false;
-	}
 	return is_valid;
 }
 
@@ -216,11 +212,6 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	// format to empty directory
 	init_directory_blk(image, this_extent->start);
 	mask(image, this_extent->start, LOOKUP_DB);
-	// init root directory
-	a1fs_dentry *root_dir = (a1fs_dentry *) jump_to(image, this_extent->start, A1FS_BLOCK_SIZE);
-	root_dir->ino = 0;
-	strncpy(root_dir->name, "/", A1FS_NAME_MAX);
-	root_dir->name[strlen("/")] = '\0';
 	// mark the first bit for root inode as used
 	mask(image, 0, LOOKUP_IB);
 	return true;
