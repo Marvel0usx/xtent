@@ -200,24 +200,25 @@ static int a1fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void)fi;// unused
 	fs_ctx *fs = get_fs();
 
+	filler(buf, ".", NULL, 0);
+	filler(buf, "..", NULL, 0);
+
 	// lookup the directory inode for given path and iterate through its
 	// directory entries
 	int err = path_lookup(path, fs);
 	a1fs_inode *dir_ino = get_inode_by_inumber(fs->image, (a1fs_ino_t) err);
 	a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
-	for (a1fs_blk_t extent_offset = 0; extent_offset < 512; extent_offset++) {
-        this_extent += extent_offset;
-        if (this_extent->start == (a1fs_blk_t) -1) continue;
+    for (a1fs_blk_t extent_offset = 0; extent_offset < 512; extent_offset++) {
+        if ((this_extent + extent_offset)->start == (a1fs_blk_t) -1) continue;
         a1fs_dentry *this_dentry;
-        for (a1fs_blk_t blk_offset = 0; blk_offset < this_extent->count; blk_offset++) {
-            uint32_t blk_num = this_extent->start + blk_offset;
+        for (a1fs_blk_t blk_offset = 0; blk_offset < (this_extent + extent_offset)->count; blk_offset++) {
+            uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
             this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
             for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
-                this_dentry += dentry_offset;
-                err = filler(buf, this_dentry->name, NULL, 0);
+                err = filler(buf, (this_dentry + dentry_offset)->name, NULL, 0);
 				if (err != 0) {
 					return -ENOMEM;
-				}
+				} 
             }
         }
     }
