@@ -270,7 +270,8 @@ int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name) {
             uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
             this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
             for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
-                if (strcmp(name, (this_dentry + dentry_offset)->name) == 0) {
+                int err = strcmp(name, (this_dentry + dentry_offset)->name);
+                if (err == 0) {
                     a1fs_ino_t inum = (this_dentry + dentry_offset)->ino;
                     if (inum != (a1fs_ino_t) -1) {
                         return inum;
