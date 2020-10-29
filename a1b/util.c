@@ -107,7 +107,7 @@ static void _mask(unsigned char *bitmap, uint32_t bit, bool on)
     if (on)
         bitmap[get_byte_offset(bit)] |= (1 << get_bit_offset(bit));
     else
-        bitmap[get_byte_offset(bit)] &= (0 << get_bit_offset(bit));
+        bitmap[get_byte_offset(bit)] &= ~(1 << get_bit_offset(bit));
 }
 
 /** Set the bit to 1 in the bitmap indicated by lookup. */
@@ -195,7 +195,7 @@ void init_directory_blk(void *image, a1fs_blk_t blk_num)
     a1fs_dentry *dir = (a1fs_dentry *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t idx = 0; idx < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); idx++)
     {
-        (dir + idx)->ino = -1;
+        (dir + idx)->ino = (a1fs_ino_t) -1;
     }
 }
 
@@ -247,7 +247,7 @@ void init_extent_blk(void *image, a1fs_blk_t blk_num) {
     a1fs_extent *extent_start = (a1fs_extent *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_extent); offset++) {
         // set the start of the extent to -1, indicating unused
-        (extent_start + offset)->start = -1;
+        (extent_start + offset)->start = (a1fs_blk_t) -1;
     }
 }
 
@@ -277,12 +277,10 @@ int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name) {
             uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
             this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
             for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
+                if ((this_dentry + dentry_offset)->ino == (a1fs_ino_t) -1) continue;
                 int err = strcmp(name, (this_dentry + dentry_offset)->name);
                 if (err == 0) {
-                    a1fs_ino_t inum = (this_dentry + dentry_offset)->ino;
-                    if (inum != (a1fs_ino_t) -1) {
-                        return inum;
-                    }
+                    return (this_dentry + dentry_offset)->ino;
                 }
             }
         }
@@ -409,6 +407,7 @@ a1fs_dentry *find_dentry_in_dir(void *image, a1fs_inode *dir_ino, const char *na
             uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
             this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
             for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
+                if ((this_dentry + dentry_offset)->ino == (a1fs_ino_t) -1) continue;
                 int err = strcmp(name, (this_dentry + dentry_offset)->name);
                 if (err == 0) {
                     return this_dentry + dentry_offset;

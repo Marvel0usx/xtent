@@ -217,7 +217,8 @@ static int a1fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
             this_dentry = (a1fs_dentry *) jump_to(fs->image, blk_num, A1FS_BLOCK_SIZE);
             for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
 				a1fs_ino_t inum = (this_dentry + dentry_offset)->ino;
-				if (inum != (a1fs_ino_t) -1 && inum < fs->s->s_num_inodes) {
+				if (inum == (a1fs_ino_t) -1) continue;
+				else {
      	            err = filler(buf, (this_dentry + dentry_offset)->name, NULL, 0);
 					if (err != 0) {
 						return -ENOMEM;
@@ -281,6 +282,9 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 				free_extent += ext_offset;
 				a1fs_blk_t new_dentry_blk_num = find_first_free_blk_num(fs->image, LOOKUP_DB);
 				init_directory_blk(fs->image, new_dentry_blk_num);
+				mask(fs->image, new_dentry_blk_num, LOOKUP_DB, true);
+				free_extent->start = new_dentry_blk_num;
+				free_extent->count = 1;
 				free_dentry = (a1fs_dentry *) jump_to(fs->image, new_dentry_blk_num, A1FS_BLOCK_SIZE);
 			}
 		} else {
@@ -291,12 +295,12 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 			goto err;
 		}
 	}
-
+	if (!has_n_free_blk(fs, 1, LOOKUP_IB)) goto err;
 	create_new_dir_in_dentry(fs->image, free_dentry, name, mode);
 	// increment link of parent inode
 	this_inode->links++;
 
-:err
+err:
 	free(parent_to_free);
 	free(name_to_free);
 
@@ -342,11 +346,15 @@ static int a1fs_rmdir(const char *path)
 	a1fs_dentry *dentry_rm = find_dentry_in_dir(fs->image, parent_ino, name);
 	// check if the dir is empty
 	a1fs_inode *ino_rm = get_inode_by_inumber(fs->image, dentry_rm->ino);
-	if (is_empty_dir(image, ino_rm)) {
-		free_dentry_blks(image, ino_rm);
-		free_extent_blk(image, ino_rm);
+	if (is_empty_dir(fs->image, ino_rm)) {
+		// free the dentry block of this inode
+		free_dentry_blks(fs->image, ino_rm);
+		// free the extent block of this inode
+		free_extent_blk(fs->image, ino_rm);
 		dentry_rm->ino = (a1fs_ino_t) -1;
 		parent_ino->links--;
+		free(parent_to_free);
+		free(name_to_free);
 		return 0;
 	} else {
 		free(parent_to_free);

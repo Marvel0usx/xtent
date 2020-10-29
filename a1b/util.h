@@ -154,10 +154,10 @@ static inline bool has_n_free_blk(fs_ctx *fs, a1fs_blk_t n, uint32_t lookup) {
 a1fs_dentry *find_dentry_in_dir(void *image, a1fs_inode *dir_ino, const char *name);
 
 /** Return true if all associated dentry is empty, else false. */
-bool is_empty_dir(void *image, a1fs_inode *ino_rm);
+bool is_empty_dir(void *image, a1fs_inode *dir_ino);
 
 /** Find all blk num of dentry blk associated with ino, mask the blk in bitmap as 0. */
-void free_dentry_blks(image, ino_rm);
+void free_dentry_blks(void *image, a1fs_inode *dir_ino);
 
 /** Mask 0 the extent block. */
 static inline void free_extent_blk(void *image, a1fs_inode *ino_rm) {
