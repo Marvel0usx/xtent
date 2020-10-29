@@ -243,7 +243,7 @@ static int a1fs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
  * Errors:
  *   ENOMEM  not enough memory (e.g. a malloc() call failed).
  *   ENOSPC  not enough free space in the file system.
- *
+ * 	
  * @param path  path to the directory to create.
  * @param mode  file mode bits.
  * @return      0 on success; -errno on error.
@@ -253,44 +253,50 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 	mode = mode | S_IFDIR;
 	fs_ctx *fs = get_fs();
 
-	// create a directory at given path with given mode
-	size_t len = strlen(path);
-	char *path_copy, *parent_path = strdup(path);
-	// remove trailing /
-	if (strchr(path, len - 1) == '/') {
-		path_copy[len - 1] = '\0';
-		parent_path[len - 1] = '\0';
-	}
-	// find the last occurance of /, and hence the new dir
-	char *dirname = strrchr(path_copy, '/') + 1;
-	parent_path[strlen(path_search) - strlen(dirname) - 1] = '\0';
-	// get the inum of parent dir
-	a1fs_ino_t inum = path_lookup(parent_path, fs);
-	a1fs_inode *parent_inode = get_inode_by_inumber(image, inum);
-	// find empty directory entry
-	a1fs_dentry *new_dentry = find_first_free_dentry(image, inum);
-	if (new_dentry == NULL) {
-		if (parent_inode->i_extents < 512) {
-			// TODO: create new extent block. 
+    char *parent = strdup(path);
+    char *name = strdup(path);
+	char *parent_to_free = parent;
+	char *name_to_free = name;
+
+    if (parent[strlen(parent)-1] == '/') {
+        parent[strlen(parent)-1] = '\0';
+   		name[strlen(name)-1] = '\0';
+    }
+
+    name = strrchr(name, '/'); name++;
+    parent[strlen(parent) - strlen(name)] = '\0';
+
+	a1fs_ino_t inum = path_lookup(parent, fs);
+	if (fs->s->s_num_free_inodes < 1) return -ENOSPC;
+	a1fs_inode *this_inode = get_inode_by_inumber(fs->image, inum);
+	a1fs_dentry *free_dentry = find_first_free_dentry(fs->image, inum);
+	a1fs_extent *free_extent;
+	if (free_dentry == NULL) {
+		if (has_n_free_blk(fs, 3, LOOKUP_DB)) {
+			int ext_offset = find_first_empty_extent_offset(fs->image, this_inode->i_ptr_extent);
+			if (ext_offset == -1) {
+				return -ENOSPC;
+			} else {
+				free_extent = (a1fs_extent *) jump_to(fs->image, this_inode->i_ptr_extent, A1FS_BLOCK_SIZE);
+				free_extent += ext_offset;
+				a1fs_blk_t new_dentry_blk_num = find_first_free_blk_num(fs->image, LOOKUP_DB);
+				init_directory_blk(fs->image, new_dentry_blk_num);
+				free_dentry = (a1fs_dentry *) jump_to(fs->image, new_dentry_blk_num, A1FS_BLOCK_SIZE);
+			}
 		} else {
-			// try to extend
+			return -ENOSPC;
 		}
-		// if fail
-		return -ENOSPC;
 	} else {
-		new_dentry->ino = find_first_free_blk_num(image, LOOKUP_IB);
-		mask(image, new_dentry->ino, LOOKUP_IB);
-		strncpy(new_dentry->name, path, A1FS_NAME_MAX);
-		new_dentry->name[strlen(path)] = '\0';
-		a1fs_inode *new_inode = get_inode_by_inumber(image, new_dentry->ino);
-		new_inode->mode = mode;
-		new_inode->links = 1;
-		new_inode->size = 0;
-		clock_gettime(CLOCK_REALTIME, &(new_inode->mtime));
-		new_inode->i_extents = 1;
-		new_inode->i_ptr_extent = find_first_free_blk_num(image, LOOKUP_DB);
-		mask(image, new_inode->i_ptr_extent, LOOKUP_DB);
+		if (!has_n_free_blk(fs, 2, LOOKUP_DB)) {
+			return -ENOSPC;
+		}
 	}
+
+	create_new_dir_in_dentry(fs->image, free_dentry, name, mode);
+
+	free(parent_to_free);
+	free(name_to_free);
+
 	return 0;
 }
 

@@ -135,6 +135,23 @@ int path_lookup(const char *path, fs_ctx *fs);
 */
 a1fs_dentry *find_first_free_dentry(void *image, a1fs_ino_t inum);
 
+/** Initialize inode. */
+void init_inode(void *image, a1fs_ino_t inum, mode_t mode, 
+uint32_t links, uint64_t size, uint32_t extents, a1fs_blk_t ptr_extent);
+
+/** Create new dir in dentry. */
+void create_new_dir_in_dentry(void *image, a1fs_dentry *parent_dir, 
+const char *name, mode_t mode);
+
+static inline bool has_n_free_blk(fs_ctx *fs, a1fs_blk_t n, uint32_t lookup) {
+	if (lookup == LOOKUP_DB) {
+		return (bool) (fs->s->s_num_free_blocks >= n);
+	} else {
+		return (bool) (fs->s->s_num_free_inodes >= n);
+	}
+	return false;
+}
+
 #ifdef DEBUG
 
 #include <stdio.h>

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <time.h>
 
 #include "util.h"
 #include "fs_ctx.h"
@@ -349,6 +350,46 @@ int path_lookup(const char *path, fs_ctx *fs) {
     }
     free(path_original);
     return err;
+}
+
+/** Initialize inode. */
+void init_inode(void *image, a1fs_ino_t inum, mode_t mode, 
+uint32_t links, uint64_t size, uint32_t extents, a1fs_blk_t ptr_extent) {
+    a1fs_inode *this_node = get_inode_by_inumber(image, inum);
+    this_node->mode = mode;
+    this_node->links = links;
+    this_node->size = size;
+    clock_gettime(CLOCK_REALTIME, &(this_node->mtime));
+    this_node->i_extents = extents;
+    this_node->i_ptr_extent = ptr_extent;
+}
+
+/** Create new dir in dentry. */
+void create_new_dir_in_dentry(void *image, a1fs_dentry *parent_dir, const char *name, mode_t mode) {
+	a1fs_ino_t inum = find_first_free_blk_num(image, LOOKUP_IB);
+    // init new extent block for new dir
+    a1fs_blk_t ext_blk_num = find_first_free_blk_num(image, LOOKUP_DB);
+    init_extent_blk(image, ext_blk_num);
+    mask(image, ext_blk_num, LOOKUP_DB);
+    // init new dentry block for new dir
+    a1fs_blk_t dentry_blk_num = find_first_free_blk_num(image, LOOKUP_DB);
+    init_directory_blk(image, dentry_blk_num);
+    mask(image, dentry_blk_num, LOOKUP_DB);
+    // set the first extent to the dentry block
+    a1fs_extent *ext_new_dir = (a1fs_extent *) jump_to(image, ext_blk_num, A1FS_BLOCK_SIZE);
+    ext_new_dir->start = dentry_blk_num;
+    ext_new_dir->count = 1;
+    // init new dir's inode
+    init_inode(image, inum, mode, 1, 0, 1, ext_blk_num);
+    mask(image, inum, LOOKUP_IB);
+    // record in parent dentry
+    parent_dir->ino = inum;
+    strncpy(parent_dir->name, name, A1FS_NAME_MAX);
+    int len = strlen(name);
+    if (len < A1FS_NAME_MAX)
+        parent_dir->name[strlen(name) - 1] = '\0';
+    else
+        parent_dir->name[A1FS_NAME_MAX - 1] = '\0';
 }
 
 #endif
