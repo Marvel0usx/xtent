@@ -275,7 +275,7 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 		if (has_n_free_blk(fs, 3, LOOKUP_DB)) {
 			int ext_offset = find_first_empty_extent_offset(fs->image, this_inode->i_ptr_extent);
 			if (ext_offset == -1) {
-				return -ENOSPC;
+				goto err;
 			} else {
 				free_extent = (a1fs_extent *) jump_to(fs->image, this_inode->i_ptr_extent, A1FS_BLOCK_SIZE);
 				free_extent += ext_offset;
@@ -284,16 +284,19 @@ static int a1fs_mkdir(const char *path, mode_t mode)
 				free_dentry = (a1fs_dentry *) jump_to(fs->image, new_dentry_blk_num, A1FS_BLOCK_SIZE);
 			}
 		} else {
-			return -ENOSPC;
+			goto err;
 		}
 	} else {
 		if (!has_n_free_blk(fs, 2, LOOKUP_DB)) {
-			return -ENOSPC;
+			goto err;
 		}
 	}
 
 	create_new_dir_in_dentry(fs->image, free_dentry, name, mode);
+	// increment link of parent inode
+	this_inode->links++;
 
+:err
 	free(parent_to_free);
 	free(name_to_free);
 
@@ -318,10 +321,38 @@ static int a1fs_rmdir(const char *path)
 {
 	fs_ctx *fs = get_fs();
 
-	//TODO: remove the directory at given path (only if it's empty)
-	(void)path;
-	(void)fs;
-	return -ENOSYS;
+	// prepare parent path and filename string
+	char *parent = strdup(path);
+    char *name = strdup(path);
+	char *parent_to_free = parent;
+	char *name_to_free = name;
+
+    if (parent[strlen(parent)-1] == '/') {
+        parent[strlen(parent)-1] = '\0';
+   		name[strlen(name)-1] = '\0';
+    }
+
+    name = strrchr(name, '/'); name++;
+    parent[strlen(parent) - strlen(name)] = '\0';
+
+	// find the inode of parent
+	a1fs_ino_t parent_inum = path_lookup(parent, fs);
+	a1fs_inode *parent_ino = get_inode_by_inumber(fs->image, parent_inum);
+	// find the dentry of file to be deleted
+	a1fs_dentry *dentry_rm = find_dentry_in_dir(fs->image, parent_ino, name);
+	// check if the dir is empty
+	a1fs_inode *ino_rm = get_inode_by_inumber(fs->image, dentry_rm->ino);
+	if (is_empty_dir(image, ino_rm)) {
+		free_dentry_blks(image, ino_rm);
+		free_extent_blk(image, ino_rm);
+		dentry_rm->ino = (a1fs_ino_t) -1;
+		parent_ino->links--;
+		return 0;
+	} else {
+		free(parent_to_free);
+		free(name_to_free);
+		return -ENOTEMPTY;
+	}	
 }
 
 /**

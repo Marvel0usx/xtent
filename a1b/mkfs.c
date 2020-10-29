@@ -189,7 +189,7 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 		reset_bitmap(bitmap);
 	}	
 	// reserve blocks in data bitmap
-	mask_range(image, 0, s->s_num_reserved_blocks, LOOKUP_DB);
+	mask_range(image, 0, s->s_num_reserved_blocks, LOOKUP_DB, true);
 
 	// initialize root inode at inumber 0
 	a1fs_inode *root = (a1fs_inode *) jump_to(image, s->s_inode_table, A1FS_BLOCK_SIZE);
@@ -202,7 +202,7 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	root->i_ptr_extent = (a1fs_blk_t) find_first_free_blk_num(image, LOOKUP_DB);
 	// format the block to extents
 	init_extent_blk(image, root->i_ptr_extent);
-	mask(image, root->i_ptr_extent, LOOKUP_DB);
+	mask(image, root->i_ptr_extent, LOOKUP_DB, true);
 	// find an extent and a free block for directories
 	int extent_offset = find_first_empty_extent_offset(image, root->i_ptr_extent);
 	a1fs_extent * this_extent = (a1fs_extent *) jump_to(image, root->i_ptr_extent, A1FS_BLOCK_SIZE);
@@ -211,9 +211,9 @@ static bool mkfs(void *image, size_t size, mkfs_opts *opts)
 	this_extent->count = 1;
 	// format to empty directory
 	init_directory_blk(image, this_extent->start);
-	mask(image, this_extent->start, LOOKUP_DB);
+	mask(image, this_extent->start, LOOKUP_DB, true);
 	// mark the first bit for root inode as used
-	mask(image, 0, LOOKUP_IB);
+	mask(image, 0, LOOKUP_IB, true);
 	return true;
 }
 

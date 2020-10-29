@@ -102,17 +102,19 @@ bool is_used_bit(void *image, uint32_t bit, uint32_t lookup)
     return (bitmap[get_byte_offset(bit)] & (1 << get_bit_offset(bit))) != 0;
 }
 
-void _mask(unsigned char *bitmap, uint32_t bit)
+static void _mask(unsigned char *bitmap, uint32_t bit, bool on)
 {
-    // set the bit to 1.
-    bitmap[get_byte_offset(bit)] |= (1 << get_bit_offset(bit));
+    if (on)
+        bitmap[get_byte_offset(bit)] |= (1 << get_bit_offset(bit));
+    else
+        bitmap[get_byte_offset(bit)] &= (0 << get_bit_offset(bit));
 }
 
 /** Set the bit to 1 in the bitmap indicated by lookup. */
-void mask(void *image, uint32_t bit, uint32_t lookup)
+void mask(void *image, uint32_t bit, uint32_t lookup, bool on)
 {
     a1fs_superblock *s = get_superblock(image);
-    if (is_used_bit(image, bit, lookup))
+    if (on && is_used_bit(image, bit, lookup))
     {
         fprintf(stderr, "Cannot mask used bit at %d.\n", bit);
         return;
@@ -122,23 +124,29 @@ void mask(void *image, uint32_t bit, uint32_t lookup)
     if (lookup == LOOKUP_DB)
     {
         bitmap = (unsigned char *)jump_to(image, s->s_data_bitmap + get_block_offset(bit), A1FS_BLOCK_SIZE);
-        _mask(bitmap, bit);
-        s->s_num_free_blocks--;
+        _mask(bitmap, bit, on);
+        if (on)
+            s->s_num_free_blocks--;
+        else
+            s->s_num_free_blocks++;
     }
     else if (lookup == LOOKUP_IB)
     {
         bitmap = (unsigned char *)jump_to(image, s->s_inode_bitmap + get_block_offset(bit), A1FS_BLOCK_SIZE);
-        _mask(bitmap, bit);
-        s->s_num_free_inodes--;
+        _mask(bitmap, bit, on);
+        if (on)
+            s->s_num_free_inodes--;
+        else
+            s->s_num_free_inodes++;
     }
 }
 
 /** Mask from start to end (exclusive) in bitmap. */
-void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup)
+void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup, bool on)
 {
     for (uint32_t offset = offset_start; offset < offset_end; offset++)
     {
-        mask(image, offset, lookup);
+        mask(image, offset, lookup, on);
     }
 }
 
@@ -324,7 +332,6 @@ a1fs_dentry *find_first_free_dentry(void *image, a1fs_ino_t inum) {
     return NULL;
 }
 
-
 /* Returns the inode number for the element at the end of the path
  * if it exists.  If there is any error, return -1.
  * Possible errors include:
@@ -370,18 +377,18 @@ void create_new_dir_in_dentry(void *image, a1fs_dentry *parent_dir, const char *
     // init new extent block for new dir
     a1fs_blk_t ext_blk_num = find_first_free_blk_num(image, LOOKUP_DB);
     init_extent_blk(image, ext_blk_num);
-    mask(image, ext_blk_num, LOOKUP_DB);
+    mask(image, ext_blk_num, LOOKUP_DB, true);
     // init new dentry block for new dir
     a1fs_blk_t dentry_blk_num = find_first_free_blk_num(image, LOOKUP_DB);
     init_directory_blk(image, dentry_blk_num);
-    mask(image, dentry_blk_num, LOOKUP_DB);
+    mask(image, dentry_blk_num, LOOKUP_DB, true);
     // set the first extent to the dentry block
     a1fs_extent *ext_new_dir = (a1fs_extent *) jump_to(image, ext_blk_num, A1FS_BLOCK_SIZE);
     ext_new_dir->start = dentry_blk_num;
     ext_new_dir->count = 1;
     // init new dir's inode
     init_inode(image, inum, mode, 1, 0, 1, ext_blk_num);
-    mask(image, inum, LOOKUP_IB);
+    mask(image, inum, LOOKUP_IB, true);
     // record in parent dentry
     parent_dir->ino = inum;
     strncpy(parent_dir->name, name, A1FS_NAME_MAX);
@@ -390,6 +397,57 @@ void create_new_dir_in_dentry(void *image, a1fs_dentry *parent_dir, const char *
         parent_dir->name[strlen(name)] = '\0';
     else
         parent_dir->name[A1FS_NAME_MAX - 1] = '\0';
+}
+
+/** Traverse all extent of dir_ino to find name; return the inum of the file. */
+a1fs_dentry *find_dentry_in_dir(void *image, a1fs_inode *dir_ino, const char *name) {
+    a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    for (a1fs_blk_t extent_offset = 0; extent_offset < 512; extent_offset++) {
+        if ((this_extent + extent_offset)->start == (a1fs_blk_t) -1) continue;
+        a1fs_dentry *this_dentry;
+        for (a1fs_blk_t blk_offset = 0; blk_offset < (this_extent + extent_offset)->count; blk_offset++) {
+            uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
+            this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+            for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
+                int err = strcmp(name, (this_dentry + dentry_offset)->name);
+                if (err == 0) {
+                    return this_dentry + dentry_offset;
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+/** Return true if all associated dentry is empty, else false. */
+bool is_empty_dir(void *image, a1fs_inode *dir_ino) {
+    a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    for (a1fs_blk_t extent_offset = 0; extent_offset < 512; extent_offset++) {
+        if ((this_extent + extent_offset)->start == (a1fs_blk_t) -1) continue;
+        a1fs_dentry *this_dentry;
+        for (a1fs_blk_t blk_offset = 0; blk_offset < (this_extent + extent_offset)->count; blk_offset++) {
+            uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
+            this_dentry = (a1fs_dentry *) jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+            for (uint32_t dentry_offset = 0; dentry_offset < 16; dentry_offset++ ) {
+                if ((this_dentry + dentry_offset)->ino != (a1fs_ino_t) -1) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+/** Find all blk num of dentry blk associated with ino, mask the blk in bitmap as 0. */
+void free_dentry_blks(void *image, a1fs_inode *dir_ino) {
+    a1fs_extent *this_extent = (a1fs_extent *) jump_to(image, dir_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    for (a1fs_blk_t extent_offset = 0; extent_offset < 512; extent_offset++) {
+        if ((this_extent + extent_offset)->start == (a1fs_blk_t) -1) continue;
+        for (a1fs_blk_t blk_offset = 0; blk_offset < (this_extent + extent_offset)->count; blk_offset++) {
+            uint32_t blk_num = (this_extent + extent_offset)->start + blk_offset;
+            mask(image, blk_num, LOOKUP_DB, false); 
+        }
+    }
 }
 
 #endif

@@ -83,13 +83,11 @@ uint32_t get_bit_offset(uint32_t bit);
 /** Check if the bit is used. */
 bool is_used_bit(void *image, uint32_t bit, uint32_t lookup);
 
-void _mask(unsigned char *bitmap, uint32_t bit);
-
-/** Set the bit to 1 in the bitmap indicated by lookup. */
-void mask(void *image, uint32_t bit, uint32_t lookup);
+/** Set the bit to on in the bitmap indicated by lookup. */
+void mask(void *image, uint32_t bit, uint32_t lookup, bool on);
 
 /** Mask from start to end (exclusive) in bitmap. */
-void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup);
+void mask_range(void *image, uint32_t offset_start, uint32_t offset_end, uint32_t lookup, bool on);
 
 /** Find the first unused bit. Return -1 if no free block found. */
 int find_first_free_blk_num(void *image, uint32_t lookup);
@@ -150,6 +148,20 @@ static inline bool has_n_free_blk(fs_ctx *fs, a1fs_blk_t n, uint32_t lookup) {
 		return (bool) (fs->s->s_num_free_inodes >= n);
 	}
 	return false;
+}
+
+/** Traverse all extent of dir_ino to find name; return the inum of the file. */
+a1fs_dentry *find_dentry_in_dir(void *image, a1fs_inode *dir_ino, const char *name);
+
+/** Return true if all associated dentry is empty, else false. */
+bool is_empty_dir(void *image, a1fs_inode *ino_rm);
+
+/** Find all blk num of dentry blk associated with ino, mask the blk in bitmap as 0. */
+void free_dentry_blks(image, ino_rm);
+
+/** Mask 0 the extent block. */
+static inline void free_extent_blk(void *image, a1fs_inode *ino_rm) {
+	mask(image, ino_rm->i_ptr_extent, LOOKUP_DB, false);
 }
 
 #ifdef DEBUG
