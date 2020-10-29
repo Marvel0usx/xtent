@@ -387,7 +387,7 @@ void create_new_dir_in_dentry(void *image, a1fs_dentry *parent_dir, const char *
     strncpy(parent_dir->name, name, A1FS_NAME_MAX);
     int len = strlen(name);
     if (len < A1FS_NAME_MAX)
-        parent_dir->name[strlen(name) - 1] = '\0';
+        parent_dir->name[strlen(name)] = '\0';
     else
         parent_dir->name[A1FS_NAME_MAX - 1] = '\0';
 }
