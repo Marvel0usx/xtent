@@ -196,11 +196,10 @@ void init_directory_blk(void *image, a1fs_blk_t blk_num)
 */
 int find_first_empty_direntry_offset(void *image, a1fs_blk_t blk_num)
 {
-    a1fs_superblock *s = get_superblock(image);
     a1fs_dentry *dir = (a1fs_dentry *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
     for (uint32_t offset = 0; offset < A1FS_BLOCK_SIZE / sizeof(a1fs_dentry); offset++)
     {
-        if ((dir + offset)->ino >= s->s_num_inodes)
+        if ((dir + offset)->ino == (a1fs_ino_t) -1)
         {
             return offset;
         }
@@ -285,9 +284,6 @@ int find_file_ino_in_dir(void *image, a1fs_inode *dir_ino, char *name) {
 
 /** Recursion helper for path traversal. */
 static int path_lookup_helper(char *path, a1fs_ino_t inumber, fs_ctx *fs) {
-    if (path == NULL) {
-        return inumber;     // Reaches to the end.
-    }
     a1fs_inode *this_inode = get_inode_by_inumber(fs->image, inumber);
     if (this_inode == NULL) perror("Invalid inode");
     if (S_ISREG(this_inode->mode) != 0) {
@@ -299,6 +295,9 @@ static int path_lookup_helper(char *path, a1fs_ino_t inumber, fs_ctx *fs) {
         // file is not in directory
         if (err == -1) {
             return -ENOENT;
+        } else if (path == NULL || strcmp(path, "") == 0) {
+            // here, we have reached to the end
+            return err;
         } else {
             return path_lookup_helper(path, err, fs);
         }
