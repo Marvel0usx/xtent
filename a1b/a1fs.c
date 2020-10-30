@@ -494,6 +494,7 @@ static int a1fs_unlink(const char *path)
 	parent_dentry->ino = (a1fs_ino_t) -1;
 	free(parent_to_free);
 	free(name_to_free);
+	return 0;
 }
 
 
@@ -524,7 +525,7 @@ static int a1fs_utimens(const char *path, const struct timespec times[2])
 	if (times == NULL) {
 		clock_gettime(CLOCK_REALTIME, &(file_ino->mtime));	
 	} else {
-		file_ino->mtime = times[1];
+		memcpy(&file_ino->mtime, &times[1], sizeof(struct timespec));
 	}
 	return 0;
 }
@@ -551,11 +552,28 @@ static int a1fs_truncate(const char *path, off_t size)
 {
 	fs_ctx *fs = get_fs();
 
-	//TODO: set new file size, possibly "zeroing out" the uninitialized range
-	(void)path;
-	(void)size;
-	(void)fs;
-	return -ENOSYS;
+	assert(size >= 0);
+
+	// find inode of file
+	a1fs_ino_t file_inum = path_lookup(path, fs);
+	a1fs_inode *file_ino = get_inode_by_inumber(image, file_inum);
+
+	// set new file size, possibly "zeroing out" the uninitialized range
+	int size_delta = file_ino->size - size;
+
+	int err;
+	if (size_delta == 0) {
+		return 0;
+	} else if (size_delta > 0) {
+		err = shrink_by_amount(fs->image, file_ino, size_delta);
+	} else {
+		err = extend_by_amount(fs->image, file_ino, -size_delta);
+	}
+	if (err == 0) {
+		file_ino->size = size;
+		clock_gettime(CLOCK_REALTIME, &(file_ino->mtime));
+	}
+	return err;
 }
 
 

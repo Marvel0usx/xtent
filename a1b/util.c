@@ -462,4 +462,70 @@ void create_new_file_in_dentry(void *image, a1fs_dentry *dir, const char *name, 
     dir->name[strlen(name)] = '\0';
 }
 
+/** Find the last used extent. */
+a1fs_extent *find_last_used_ext(void *image, a1fs_inode *ino) {
+    a1fs_extent *last_used = NULL;
+    a1fs_extent *this = (a1fs_extent *)jump_to(image, ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    for (a1fs_blk_t offset = 0; offset < 512; offset++) {
+        if ((this + offset)->start != (a1fs_blk_t) -1) {
+            last_used = (this + offset);
+        }
+    }
+    return last_used;
+}
+
+/** Shrink the extent by n block. Mask off blocks and unset extent if 
+ * the extent is empty. */
+void shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num) {
+    a1fs_blk_t ext_size = ext->count;
+    if (*num >= ext_size) {
+        // delete whole extent and free blocks
+        for (a1fs_blk_t offset = 0; offset < ext_size; offset++) {
+            void *blk = jump_to(image, ext->start + offset, A1FS_BLOCK_SIZE);
+            // erase block
+            memset(blk, 0, A1FS_BLOCK_SIZE);
+            // mask block to unused
+            mask(image, ext->start + offset, LOOKUP_DB, false);
+        }
+        ext->start = (a1fs_blk_t) -1;
+        *num -= ext_size;
+    } else {
+        // shrink by num
+        for (a1fs_blk_t offset = 1; offset < *num + 1; offset++) {
+            void *blk = jump_to(image, ext->start + ext->count - offset, A1FS_BLOCK_SIZE);
+            memset(blk, 0, A1FS_BLOCK_SIZE);
+            mask(image, ext->start + ext->count - offset, LOOKUP_DB, false);
+        }
+        *num = 0;
+    }
+}
+
+/** Shrink the block to the given size in byte. */
+void shrink_blk_to_size(void *image, a1fs_blk_t blk_num, size_t size) {
+    unsigned char *blk = (unsigned char *)jump_to(image, blk_num, A1FS_BLOCK_SIZE);
+    blk += size;
+    memset(blk, 0, A1FS_BLOCK_SIZE - size);
+};
+
+/** Shrink the file by num of block. */
+void shrink_by_num_blk(void *image, a1fs_inode *ino, a1fs_blk_t num_blk) {
+    a1fs_extent *last_ext;
+    while (num_blk > 0) {
+        last_ext = find_last_used_ext(image, ino);
+        shrink_ext_by_num_blk(image, last_ext, &num_blk);
+    }
+};
+
+/** Shrink amount of bytes specified in size. */
+int shrink_by_amount(void *image, a1fs_inode *ino, size_t size) {
+    a1fs_blk_t shrink_blk = size / A1FS_BLOCK_SIZE;
+    size_t shrink_to_bytes = A1FS_BLOCK_SIZE - size % A1FS_BLOCK_SIZE;
+    // shrink by blocks
+    shrink_by_num_blk(image, ino, shrink_blk);
+    // now shrink within one block
+    a1fs_extent *last_ext = find_last_used_ext(image, ino);
+    shrink_blk_to_size(image, last_ext->start + last_ext->count - 1, shrink_to_bytes);
+    return 0;
+}
+
 #endif

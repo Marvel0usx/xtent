@@ -164,9 +164,24 @@ static inline void free_extent_blk(void *image, a1fs_inode *ino_rm) {
 	mask(image, ino_rm->i_ptr_extent, LOOKUP_DB, false);
 }
 
-
 /** Create an empty file inside the directory. */
 void create_new_file_in_dentry(void *image, a1fs_dentry *dir, const char *name, mode_t mode);
+
+/** Find the last used extent. */
+a1fs_extent *find_last_used_ext(void *image, a1fs_inode *ino);
+
+/** Shrink the extent by n block. Mask off blocks and unset extent if 
+ * the extent is empty. */
+void shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num);
+
+/** Shrink the block to the given size in byte. */
+void shrink_blk_to_size(void *image, a1fs_blk_t blk_num, size_t size);
+
+/** Shrink the file by num of block. */
+void shrink_by_num_blk(void *image, a1fs_inode *ino, a1fs_blk_t num_blk);
+
+/** Shrink amount of bytes specified in size. */
+int shrink_by_amount(void *image, a1fs_inode *ino, size_t size);
 
 #ifdef DEBUG
 
