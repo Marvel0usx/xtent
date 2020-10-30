@@ -560,11 +560,21 @@ static int a1fs_truncate(const char *path, off_t size)
 
 	// set new file size, possibly "zeroing out" the uninitialized range
 	int size_delta = file_ino->size - size;
+	if (size_delta == 0) return 0;
+	
+	a1fs_extent *last_ext = find_last_used_ext(fs->image, file_ino);
+    // this file is newly created if there is no used extent, and we have to create a new
+	if (!last_ext) {
+		last_ext = (a1fs_extent *)jump_to(fs->image, file_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+		a1fs_blk_t new_blk = find_first_free_blk_num(fs->image, LOOKUP_DB);
+		if (new_blk == (a1fs_blk_t) -1) return -ENOSPC;
+		last_ext->start = new_blk;
+		last_ext->count = 1;
+		mask(fs->image, new_blk, LOOKUP_DB, true);
+	}
 
 	int err;
-	if (size_delta == 0) {
-		return 0;
-	} else if (size_delta > 0) {
+	if (size_delta > 0) {
 		err = shrink_by_amount(fs->image, file_ino, size_delta);
 	} else {
 		err = extend_by_amount(fs, file_ino, -size_delta);
