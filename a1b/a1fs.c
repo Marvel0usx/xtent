@@ -561,7 +561,7 @@ static int a1fs_truncate(const char *path, off_t size)
 	// set new file size, possibly "zeroing out" the uninitialized range
 	int size_delta = file_ino->size - size;
 	if (size_delta == 0) return 0;
-	
+
 	a1fs_extent *last_ext = find_last_used_ext(fs->image, file_ino);
     // this file is newly created if there is no used extent, and we have to create a new
 	if (!last_ext) {
@@ -571,6 +571,9 @@ static int a1fs_truncate(const char *path, off_t size)
 		last_ext->start = new_blk;
 		last_ext->count = 1;
 		mask(fs->image, new_blk, LOOKUP_DB, true);
+		if (size <= A1FS_BLOCK_SIZE) {
+			return 0;
+		}
 	}
 
 	int err;
@@ -614,13 +617,27 @@ static int a1fs_read(const char *path, char *buf, size_t size, off_t offset,
 	(void)fi;// unused
 	fs_ctx *fs = get_fs();
 
-	//TODO: read data from the file at given offset into the buffer
-	(void)path;
-	(void)buf;
-	(void)size;
-	(void)offset;
-	(void)fs;
-	return -ENOSYS;
+	// find inode of file
+	a1fs_ino_t file_inum = path_lookup(path, fs);
+	a1fs_inode *file_ino = get_inode_by_inumber(fs->image, file_inum);
+	
+	// beyond EOF
+	if (offset >= (off_t) file_ino->size) return 0;
+
+	// get the block to read from
+	a1fs_blk_t blk_offset = offset / A1FS_BLOCK_SIZE;
+	a1fs_blk_t byte_start = offset % A1FS_BLOCK_SIZE;
+
+	// find the block to read froms
+	a1fs_blk_t blk_start = find_blk_given_offset(fs->image, file_ino, blk_offset);
+	if (blk_start == (a1fs_blk_t) -1) return 0;
+	unsigned char *blk_to_read = (unsigned char *)jump_to(fs->image, blk_start, A1FS_BLOCK_SIZE);
+	// locate the starting byte
+	blk_to_read += byte_start;
+	// read
+	memcpy(buf, blk_to_read, size);
+
+	return size;
 }
 
 /**
@@ -652,14 +669,32 @@ static int a1fs_write(const char *path, const char *buf, size_t size,
 	(void)fi;// unused
 	fs_ctx *fs = get_fs();
 
-	//TODO: write data from the buffer into the file at given offset, possibly
-	// "zeroing out" the uninitialized range
-	(void)path;
-	(void)buf;
-	(void)size;
-	(void)offset;
-	(void)fs;
-	return -ENOSYS;
+	// find inode of file
+	a1fs_ino_t file_inum = path_lookup(path, fs);
+	a1fs_inode *file_ino = get_inode_by_inumber(fs->image, file_inum);
+
+	// compute the size to extend
+	size_t size_exted = offset + size;
+
+	int err;
+	// extend this file if needed
+	if (size_exted > file_ino->size) {
+		err = a1fs_truncate(path, size_exted);
+		if (err != 0) {
+			return err;
+		}
+	}
+
+	// find the block number to write to
+	a1fs_blk_t blk_offset = offset / A1FS_BLOCK_SIZE;
+	a1fs_blk_t byte_start = offset % A1FS_BLOCK_SIZE;
+	a1fs_blk_t blk_start = find_blk_given_offset(fs->image, file_ino, blk_offset);
+	// locate the starting byte
+	unsigned char *blk_to_write = (unsigned char *)jump_to(fs->image, blk_start, A1FS_BLOCK_SIZE);
+	blk_to_write += byte_start;
+	// write
+	memcpy(blk_to_write, buf, size);
+	return size;
 }
 
 

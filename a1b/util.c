@@ -638,4 +638,22 @@ int extend_by_amount(fs_ctx *fs, a1fs_inode *ino, size_t size) {
     return 0;
 }
 
+/** Find until reach to the blk_offset. */
+a1fs_blk_t find_blk_given_offset(void *image, a1fs_inode *file_ino, a1fs_blk_t blk_offset) {
+    a1fs_extent *start_ext = (a1fs_extent *)jump_to(image, file_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+    a1fs_extent *this_ext;
+    // accumulate to blk_offset
+    a1fs_blk_t blk_acc = 0;
+    for (a1fs_blk_t offset = 0; offset < 512; offset++) {
+        this_ext = start_ext + offset;
+        if (this_ext->start == (a1fs_blk_t) -1) continue;
+        if ((blk_acc + this_ext->count) >= blk_offset) {
+            return this_ext->start + (blk_offset - blk_acc);
+        } else {
+            blk_acc += this_ext->count;
+        }
+    }
+    return -1;
+}
+
 #endif

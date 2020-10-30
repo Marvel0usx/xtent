@@ -186,6 +186,8 @@ int shrink_by_amount(void *image, a1fs_inode *ino, size_t size);
 /** Extend the file by specified bytes. */
 int extend_by_amount(fs_ctx *fs, a1fs_inode *ino, size_t size);
 
+/** Find until reach to the blk_offset. */
+a1fs_blk_t find_blk_given_offset(void *image, a1fs_inode *file_ino, a1fs_blk_t blk_offset);
 
 #ifdef DEBUG
 
