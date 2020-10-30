@@ -391,7 +391,8 @@ static int a1fs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	mode = mode | S_IFDIR;
 	fs_ctx *fs = get_fs();
 
-	has
+	// at least one inode
+	if (!has_n_free_blk(fs, 1, LOOKUP_IB)) return -ENOSPC;
 
     // prepare parent path and filename string
 	char *parent = strdup(path);
@@ -407,7 +408,43 @@ static int a1fs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     name = strrchr(name, '/'); name++;
     parent[strlen(parent) - strlen(name)] = '\0';
 
-	// 
+	// prepare parent directory to store new file
+	a1fs_ino_t parent_inum = path_lookup(parent, fs);
+	a1fs_inode *parent_ino = get_inode_by_inumber(fs->image, parent_inum);
+	a1fs_dentry *parent_dentry = find_first_free_dentry(fs->image, parent_inum);
+	// create new block of dentries
+	if (parent_dentry == NULL) {
+		a1fs_extent *parent_free_ext;
+		if (has_n_free_blk(fs, 2, LOOKUP_DB)) {
+			int free_ext_offset = find_first_empty_extent_offset(fs->image, parent_ino->i_ptr_extent);
+			// excess 512 extents
+			if (free_ext_offset == -1) {
+				goto err;
+			} else {
+				// use new extent to store new dentry block
+				parent_free_ext = (a1fs_extent *) jump_to(fs->image, parent_ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+				parent_free_ext += free_ext_offset;
+				// init new dentry block
+				a1fs_blk_t new_dentry_blk_num = find_first_free_blk_num(fs->image, LOOKUP_DB);
+				init_directory_blk(fs->image, new_dentry_blk_num);
+				mask(fs->image, new_dentry_blk_num, LOOKUP_DB, true);
+				// record new dentry block
+				parent_free_ext->start = new_dentry_blk_num;
+				parent_free_ext->count = 1;
+				// refer to the newly created dentry
+				parent_dentry = (a1fs_dentry *) jump_to(fs->image, new_dentry_blk_num, A1FS_BLOCK_SIZE);
+			}
+		} else {
+			goto err;
+		}
+	} else {
+		// need 1 free data block to store extent
+		if (!has_n_free_blk(fs, 1, LOOKUP_DB)) {
+			goto err;
+		}
+	}
+	// create new file after preparation
+	create_new_file_in_dentry(fs->image, parent_dentry, name, mode);
 
 err:
 	free(parent_to_free);

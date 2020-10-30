@@ -164,6 +164,10 @@ static inline void free_extent_blk(void *image, a1fs_inode *ino_rm) {
 	mask(image, ino_rm->i_ptr_extent, LOOKUP_DB, false);
 }
 
+
+/** Create an empty file inside the directory. */
+void create_new_file_in_dentry(void *image, a1fs_dentry *dir, const char *name, mode_t mode);
+
 #ifdef DEBUG
 
 #include <stdio.h>

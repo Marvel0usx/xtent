@@ -449,4 +449,17 @@ void free_dentry_blks(void *image, a1fs_inode *dir_ino) {
     }
 }
 
+/** Create an empty file inside the directory. */
+void create_new_file_in_dentry(void *image, a1fs_dentry *dir, const char *name, mode_t mode) {
+    a1fs_ino_t new_file_inum = find_first_free_blk_num(image, LOOKUP_IB);
+    a1fs_blk_t new_file_ext_bnum = find_first_free_blk_num(image, LOOKUP_DB);
+    init_extent_blk(image, new_file_ext_bnum);
+    mask(image, new_file_ext_bnum, LOOKUP_DB, true);
+    init_inode(image, new_file_inum, mode, 1, 0, 1, new_file_ext_bnum);
+    mask(image, new_file_inum, LOOKUP_IB, true);
+    dir->ino = new_file_inum;
+    strncpy(dir->name, name, A1FS_NAME_MAX);
+    dir->name[strlen(name)] = '\0';
+}
+
 #endif
