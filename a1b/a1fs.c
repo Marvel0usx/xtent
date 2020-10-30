@@ -479,7 +479,21 @@ static int a1fs_unlink(const char *path)
     name = strrchr(name, '/'); name++;
     parent[strlen(parent) - strlen(name)] = '\0';
 	// prepare to remove file
-	a1fs_dentry
+	a1fs_ino_t parent_inum = path_lookup(parent, fs);
+	a1fs_inode *parent_ino = get_inode_by_inumber(fs->image, parent_inum);
+	a1fs_ino_t file_inum = path_lookup(path, fs);
+	a1fs_inode *file_ino = get_inode_by_inumber(fs->image, file_inum);
+	// free dentry containing the file
+	a1fs_dentry *parent_dentry = find_dentry_in_dir(fs->image, parent_ino, name);
+	free_dentry_blks(fs->image, file_ino);
+	// free file extent
+	free_extent_blk(fs->image, file_ino);
+	// free inode
+	mask(fs->image, file_inum, LOOKUP_IB, false);
+	// remove from dentry
+	parent_dentry->ino = (a1fs_ino_t) -1;
+	free(parent_to_free);
+	free(name_to_free);
 }
 
 
@@ -503,13 +517,16 @@ static int a1fs_utimens(const char *path, const struct timespec times[2])
 {
 	fs_ctx *fs = get_fs();
 
-	//TODO: update the modification timestamp (mtime) in the inode for given
-	// path with either the time passed as argument or the current time,
-	// according to the utimensat man page
-	(void)path;
-	(void)times;
-	(void)fs;
-	return -ENOSYS;
+	a1fs_ino_t file_inum = path_lookup(path, fs);
+	a1fs_inode *file_ino = get_inode_by_inumber(fs->image, file_inum);
+
+	// set to current time if new timestemp is not specified
+	if (times == NULL) {
+		clock_gettime(CLOCK_REALTIME, &(file_ino->mtime));	
+	} else {
+		file_ino->mtime = times[1];
+	}
+	return 0;
 }
 
 /**
