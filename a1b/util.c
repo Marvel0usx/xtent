@@ -455,7 +455,7 @@ void create_new_file_in_dentry(void *image, a1fs_dentry *dir, const char *name, 
     a1fs_blk_t new_file_ext_bnum = find_first_free_blk_num(image, LOOKUP_DB);
     init_extent_blk(image, new_file_ext_bnum);
     mask(image, new_file_ext_bnum, LOOKUP_DB, true);
-    init_inode(image, new_file_inum, mode, 1, 0, 1, new_file_ext_bnum);
+    init_inode(image, new_file_inum, mode, 1, 0, 0, new_file_ext_bnum);
     mask(image, new_file_inum, LOOKUP_IB, true);
     dir->ino = new_file_inum;
     strncpy(dir->name, name, A1FS_NAME_MAX);
@@ -475,8 +475,8 @@ a1fs_extent *find_last_used_ext(void *image, a1fs_inode *ino) {
 }
 
 /** Shrink the extent by n block. Mask off blocks and unset extent if 
- * the extent is empty. */
-void shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num) {
+ * the extent is empty. Return the number of extent reduced. */
+int shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num) {
     a1fs_blk_t ext_size = ext->count;
     if (*num >= ext_size) {
         // delete whole extent and free blocks
@@ -489,6 +489,7 @@ void shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num) {
         }
         ext->start = (a1fs_blk_t) -1;
         *num -= ext_size;
+        return 1;
     } else {
         // shrink by num
         for (a1fs_blk_t offset = 1; offset < *num + 1; offset++) {
@@ -497,6 +498,7 @@ void shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num) {
             mask(image, ext->start + ext->count - offset, LOOKUP_DB, false);
         }
         *num = 0;
+        return 0;
     }
 }
 
@@ -512,20 +514,127 @@ void shrink_by_num_blk(void *image, a1fs_inode *ino, a1fs_blk_t num_blk) {
     a1fs_extent *last_ext;
     while (num_blk > 0) {
         last_ext = find_last_used_ext(image, ino);
-        shrink_ext_by_num_blk(image, last_ext, &num_blk);
+        ino->i_extents -= shrink_ext_by_num_blk(image, last_ext, &num_blk);
     }
 };
 
 /** Shrink amount of bytes specified in size. */
 int shrink_by_amount(void *image, a1fs_inode *ino, size_t size) {
+    // remove the non-block ending of the file
+    size_t tailing = ino->size % A1FS_BLOCK_SIZE;
+    a1fs_extent *last_extent = find_last_used_ext(image, ino);
+    if (tailing != 0) {
+        a1fs_blk_t last_blk = last_extent->start + last_extent->count - 1;
+        if (tailing > size) {
+            // shrink in tailing block
+            shrink_blk_to_size(image, last_blk, tailing - size);
+            size = 0;
+        } else {
+            // remove tailing block
+            shrink_blk_to_size(image, last_blk, 0);
+            last_extent->count--;
+            // remove extent if empty
+            if (last_extent->count == 0) {
+                last_extent->start = (a1fs_blk_t) -1;
+                ino->i_extents--;
+            }
+            // update the amount
+            size -= tailing;
+        }
+    }
     a1fs_blk_t shrink_blk = size / A1FS_BLOCK_SIZE;
     size_t shrink_to_bytes = A1FS_BLOCK_SIZE - size % A1FS_BLOCK_SIZE;
     // shrink by blocks
-    shrink_by_num_blk(image, ino, shrink_blk);
+    if (shrink_blk != 0)
+        shrink_by_num_blk(image, ino, shrink_blk);
     // now shrink within one block
-    a1fs_extent *last_ext = find_last_used_ext(image, ino);
-    shrink_blk_to_size(image, last_ext->start + last_ext->count - 1, shrink_to_bytes);
+    if (shrink_to_bytes != 0) {
+        last_ext = find_last_used_ext(image, ino);
+        shrink_blk_to_size(image, last_ext->start + last_ext->count - 1, shrink_to_bytes);
+    }
     return 0;
+}
+
+/** Find the starting block num for consecutive n. Return -1 is unfound. */
+a1fs_blk_t window_slide(fs_ctx *fs, a1fs_blk_t n) {
+    a1fs_blk_t max = fs->s->s_num_blocks;
+    bool valid;
+    for (a1fs_blk_t this_blk = 0; this_blk <= max - n; this_blk++) {
+        valid = true;
+        for (a1fs_blk_t offset = 0; offset < n; offset++) {
+            if (is_used_bit(fs->image, this_blk + offset, LOOKUP_DB)) {
+                valid = false; break;
+            }
+        }
+        if (valid)
+            return this_blk;
+    }
+    return -1;
+}
+
+/** Extend the file by specified bytes. */
+int extend_by_amount(fs_ctx *fs, a1fs_inode *ino, size_t size) {
+    size_t num_tailing_data_byte = ino->size % A1FS_BLOCK_SIZE;
+    size_t num_tailing_blank_byte;
+    if (num_tailing_data_byte == 0) {
+        num_tailing_blank_byte = 0;
+    } else {
+        num_tailing_blank_byte = A1FS_BLOCK_SIZE - num_tailing_data_byte;
+    }
+    // make use of the trailing blank bytes
+    a1fs_extent *last_ext = find_last_used_ext(image, ino);
+    if (num_tailing_blank_byte != 0) {
+        a1fs_blk_t last_blk = last_ext->start + last_ext->count - 1;
+        unsigned char *tailing_blank_start = (unsigned char *)jump_to(image, last_blk, A1FS_BLOCK_SIZE);
+        tailing_blank_start += num_tailing_data_byte;
+        // format tailing blank to use
+        memset(tailing_blank_start, 0, num_tailing_blank_byte);
+    }
+    // if the extending size is less or equal to the tailing blank, then we are done
+    if (num_tailing_blank_byte >= size) return 0;
+    // ------------- new blocks need to be assigned ----------------
+    // calculate the number of new blocks needed after making use of tailing blanks
+    a1fs_blk_t num_extend_blk = CEIL_DIV(size - num_tailing_blank_byte, A1FS_BLOCK_SIZE);
+    // if the system can't store, return nospc
+    if (!has_n_free_blk(fs, num_extend_blk, LOOKUP_DB)) return -ENOSPC;
+    // in a loop, we store all blocks, i.e. num_extend_blk = 0
+    a1fs_blk_t n = num_extend_blk;
+    while (num_extend_blk) {
+        // use window sliding to find the largest possible consecutive blocks
+        a1fs_blk_t extent_start = window_slide(fs, n);
+        if (extent_start == (a1fs_blk_t) -1) {
+            // extent of this length cannot be found, try a smaller one
+            n--;
+            continue;
+        } else {
+            // we have found an extent of length n, starting at extent_start
+            if (last_ext->start + last_ext->count == extent_start) {
+                // extend last extent
+                last_ext->count += n;
+            } else {
+                // ------------- need a new extent --------------
+                a1fs_blk_t ext_offset = find_first_empty_extent_offset(fs->image, ino->i_ptr_extent);
+                if (ext_offset == (a1fs_blk_t) -1) {
+                    return -ENOSPC;
+                } else {
+                    // store block info in the new extent
+                    a1fs_extent *new_ext = (a1fs_extent *)jump_to(fs->image, ino->i_ptr_extent, A1FS_BLOCK_SIZE);
+                    new_ext += ext_offset;
+                    new_ext->start = extent_start;
+                    new_ext->count = n;
+                    // update number of extents
+                    ino->i_extents++;
+                }   
+            }
+            // format new space
+            void *start_blk = jump_to(fs->image, extent_start, A1FS_BLOCK_SIZE);
+            memset(start_blk, 0, n * A1FS_BLOCK_SIZE);
+            // mask used
+            mask_range(fs->image, extent_start, extent_start + n, LOOKUP_DB, on);
+            // update number of blocks to find
+            num_extend_blk -= n;
+        }
+    }
 }
 
 #endif

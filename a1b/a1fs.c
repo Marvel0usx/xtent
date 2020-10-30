@@ -567,7 +567,7 @@ static int a1fs_truncate(const char *path, off_t size)
 	} else if (size_delta > 0) {
 		err = shrink_by_amount(fs->image, file_ino, size_delta);
 	} else {
-		err = extend_by_amount(fs->image, file_ino, -size_delta);
+		err = extend_by_amount(fs, file_ino, -size_delta);
 	}
 	if (err == 0) {
 		file_ino->size = size;

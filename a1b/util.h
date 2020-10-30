@@ -171,8 +171,8 @@ void create_new_file_in_dentry(void *image, a1fs_dentry *dir, const char *name, 
 a1fs_extent *find_last_used_ext(void *image, a1fs_inode *ino);
 
 /** Shrink the extent by n block. Mask off blocks and unset extent if 
- * the extent is empty. */
-void shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num);
+ * the extent is empty. Return the number of extent reduced. */
+int shrink_ext_by_num_blk(void *image, a1fs_extent *ext, a1fs_blk_t *num);
 
 /** Shrink the block to the given size in byte. */
 void shrink_blk_to_size(void *image, a1fs_blk_t blk_num, size_t size);
