@@ -388,11 +388,31 @@ static int a1fs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	assert(S_ISREG(mode));
 	fs_ctx *fs = get_fs();
 
-	//TODO: create a file at given path with given mode
-	(void)path;
-	(void)mode;
-	(void)fs;
-	return -ENOSYS;
+	mode = mode | S_IFDIR;
+	fs_ctx *fs = get_fs();
+
+	has
+
+    // prepare parent path and filename string
+	char *parent = strdup(path);
+    char *name = strdup(path);
+	char *parent_to_free = parent;
+	char *name_to_free = name;
+
+    if (parent[strlen(parent)-1] == '/') {
+        parent[strlen(parent)-1] = '\0';
+   		name[strlen(name)-1] = '\0';
+    }
+
+    name = strrchr(name, '/'); name++;
+    parent[strlen(parent) - strlen(name)] = '\0';
+
+	// 
+
+err:
+	free(parent_to_free);
+	free(name_to_free);
+	return 0;
 }
 
 /**
