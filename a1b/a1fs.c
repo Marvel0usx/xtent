@@ -556,7 +556,7 @@ static int a1fs_truncate(const char *path, off_t size)
 
 	// find inode of file
 	a1fs_ino_t file_inum = path_lookup(path, fs);
-	a1fs_inode *file_ino = get_inode_by_inumber(image, file_inum);
+	a1fs_inode *file_ino = get_inode_by_inumber(fs->image, file_inum);
 
 	// set new file size, possibly "zeroing out" the uninitialized range
 	int size_delta = file_ino->size - size;

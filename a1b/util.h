@@ -183,6 +183,10 @@ void shrink_by_num_blk(void *image, a1fs_inode *ino, a1fs_blk_t num_blk);
 /** Shrink amount of bytes specified in size. */
 int shrink_by_amount(void *image, a1fs_inode *ino, size_t size);
 
+/** Extend the file by specified bytes. */
+int extend_by_amount(fs_ctx *fs, a1fs_inode *ino, size_t size);
+
+
 #ifdef DEBUG
 
 #include <stdio.h>

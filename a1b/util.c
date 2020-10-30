@@ -549,14 +549,14 @@ int shrink_by_amount(void *image, a1fs_inode *ino, size_t size) {
         shrink_by_num_blk(image, ino, shrink_blk);
     // now shrink within one block
     if (shrink_to_bytes != 0) {
-        last_ext = find_last_used_ext(image, ino);
-        shrink_blk_to_size(image, last_ext->start + last_ext->count - 1, shrink_to_bytes);
+        last_extent = find_last_used_ext(image, ino);
+        shrink_blk_to_size(image, last_extent->start + last_extent->count - 1, shrink_to_bytes);
     }
     return 0;
 }
 
 /** Find the starting block num for consecutive n. Return -1 is unfound. */
-a1fs_blk_t window_slide(fs_ctx *fs, a1fs_blk_t n) {
+static a1fs_blk_t window_slide(fs_ctx *fs, a1fs_blk_t n) {
     a1fs_blk_t max = fs->s->s_num_blocks;
     bool valid;
     for (a1fs_blk_t this_blk = 0; this_blk <= max - n; this_blk++) {
@@ -582,10 +582,10 @@ int extend_by_amount(fs_ctx *fs, a1fs_inode *ino, size_t size) {
         num_tailing_blank_byte = A1FS_BLOCK_SIZE - num_tailing_data_byte;
     }
     // make use of the trailing blank bytes
-    a1fs_extent *last_ext = find_last_used_ext(image, ino);
+    a1fs_extent *last_ext = find_last_used_ext(fs->image, ino);
     if (num_tailing_blank_byte != 0) {
         a1fs_blk_t last_blk = last_ext->start + last_ext->count - 1;
-        unsigned char *tailing_blank_start = (unsigned char *)jump_to(image, last_blk, A1FS_BLOCK_SIZE);
+        unsigned char *tailing_blank_start = (unsigned char *)jump_to(fs->image, last_blk, A1FS_BLOCK_SIZE);
         tailing_blank_start += num_tailing_data_byte;
         // format tailing blank to use
         memset(tailing_blank_start, 0, num_tailing_blank_byte);
@@ -630,11 +630,12 @@ int extend_by_amount(fs_ctx *fs, a1fs_inode *ino, size_t size) {
             void *start_blk = jump_to(fs->image, extent_start, A1FS_BLOCK_SIZE);
             memset(start_blk, 0, n * A1FS_BLOCK_SIZE);
             // mask used
-            mask_range(fs->image, extent_start, extent_start + n, LOOKUP_DB, on);
+            mask_range(fs->image, extent_start, extent_start + n, LOOKUP_DB, true);
             // update number of blocks to find
             num_extend_blk -= n;
         }
     }
+    return 0;
 }
 
 #endif
