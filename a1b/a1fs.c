@@ -388,9 +388,6 @@ static int a1fs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	assert(S_ISREG(mode));
 	fs_ctx *fs = get_fs();
 
-	mode = mode | S_IFDIR;
-	fs_ctx *fs = get_fs();
-
 	// at least one inode
 	if (!has_n_free_blk(fs, 1, LOOKUP_IB)) return -ENOSPC;
 
@@ -469,10 +466,20 @@ static int a1fs_unlink(const char *path)
 {
 	fs_ctx *fs = get_fs();
 
-	//TODO: remove the file at given path
-	(void)path;
-	(void)fs;
-	return -ENOSYS;
+	// prepare parent path and filename string
+	char *parent = strdup(path);
+    char *name = strdup(path);
+	char *parent_to_free = parent;
+	char *name_to_free = name;
+	// split path to parent dir and file
+    if (parent[strlen(parent)-1] == '/') {
+        parent[strlen(parent)-1] = '\0';
+   		name[strlen(name)-1] = '\0';
+    }
+    name = strrchr(name, '/'); name++;
+    parent[strlen(parent) - strlen(name)] = '\0';
+	// prepare to remove file
+	a1fs_dentry
 }
 
 
