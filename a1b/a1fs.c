@@ -166,6 +166,7 @@ static int a1fs_getattr(const char *path, struct stat *st)
 		a1fs_inode *this_file = get_inode_by_inumber(fs->image, err);
 		if (this_file == NULL) perror("Invalid inode!");
 		st->st_mode = this_file->mode;
+		st->st_size = this_file->size;
 		st->st_nlink = this_file->links;
 		st->st_blocks = CEIL_DIV(this_file->size, 512);
 		st->st_mtime = (time_t) this_file->mtime.tv_sec;
@@ -561,7 +562,7 @@ static int a1fs_truncate(const char *path, off_t size)
 	// set new file size, possibly "zeroing out" the uninitialized range
 	int size_delta = file_ino->size - size;
 	if (size_delta == 0) return 0;
-
+	int err;
 	a1fs_extent *last_ext = find_last_used_ext(fs->image, file_ino);
     // this file is newly created if there is no used extent, and we have to create a new
 	if (!last_ext) {
@@ -571,16 +572,16 @@ static int a1fs_truncate(const char *path, off_t size)
 		last_ext->start = new_blk;
 		last_ext->count = 1;
 		mask(fs->image, new_blk, LOOKUP_DB, true);
+		file_ino->i_extents++;
 		if (size <= A1FS_BLOCK_SIZE) {
-			return 0;
+			err = 0;
 		}
-	}
-
-	int err;
-	if (size_delta > 0) {
-		err = shrink_by_amount(fs->image, file_ino, size_delta);
 	} else {
-		err = extend_by_amount(fs, file_ino, -size_delta);
+		if (size_delta > 0) {
+			err = shrink_by_amount(fs->image, file_ino, size_delta);
+		} else {
+			err = extend_by_amount(fs, file_ino, -size_delta);
+		}
 	}
 	if (err == 0) {
 		file_ino->size = size;
@@ -614,7 +615,7 @@ static int a1fs_truncate(const char *path, off_t size)
 static int a1fs_read(const char *path, char *buf, size_t size, off_t offset,
                      struct fuse_file_info *fi)
 {
-	(void)fi;// unused
+	(void)fi;	// unused
 	fs_ctx *fs = get_fs();
 
 	// find inode of file
@@ -634,9 +635,8 @@ static int a1fs_read(const char *path, char *buf, size_t size, off_t offset,
 	unsigned char *blk_to_read = (unsigned char *)jump_to(fs->image, blk_start, A1FS_BLOCK_SIZE);
 	// locate the starting byte
 	blk_to_read += byte_start;
-	// read
+	memset(buf, 0, size);
 	memcpy(buf, blk_to_read, size);
-
 	return size;
 }
 
